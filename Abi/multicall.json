@@ -1,0 +1,26 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "t",
+        "type": "address[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "b",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "mul",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
