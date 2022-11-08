@@ -17,7 +17,7 @@ const builds = require("./build.schema");
 const position = require("./position.schema");
 const transfer = require("./transfer.schema");
 const mongoDBUrl = `${process.env.MONGO_DB_URL}`;
-const multiCallAbi = require("./Abi/multiCall.json");
+const multiCallAbi = require("./Abi/multicall.json");
 
 const network = {
   name: "Ethereum Mainnet",
