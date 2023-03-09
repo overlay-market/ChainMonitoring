@@ -3,16 +3,16 @@
     "inputs": [
       {
         "internalType": "address[]",
-        "name": "t",
+        "name": "targets",
         "type": "address[]"
       },
       {
         "internalType": "bytes[]",
-        "name": "b",
+        "name": "data",
         "type": "bytes[]"
       }
     ],
-    "name": "mul",
+    "name": "multiCall",
     "outputs": [
       {
         "internalType": "uint256[]",

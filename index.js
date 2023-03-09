@@ -19,40 +19,23 @@ const transfer = require("./transfer.schema");
 const mongoDBUrl = `${process.env.MONGO_DB_URL}`;
 const multiCallAbi = require("./Abi/multicall.json");
 
-const network = {
-  name: "Ethereum Mainnet",
-  chainId: 1,
-  _defaultProvider: (providers) =>
-    new providers.JsonRpcProvider(
-      `https://eth-mainnet.alchemyapi.io/v2/${process.env.ID}`
-    ),
-};
+const {
+  read,
+  multiCall,
+  getAddress,
+  liveMarkets,
+  stateContract,
+  tokenContract,
+  SOL_USDmarket,
+  APE_USDmarket,
+  WBTC_USDmarket,
+  LINK_USDmarket,
+  AVAX_USDmarket,
+  getDateAndTime,
+  MATIC_USDmarket,
+} = require("./helper");
 
-const number = 1000000000000000000;
-const provider = ethers.getDefaultProvider(network);
-
-const marketContract = new ethers.Contract(
-  config.MARKETS["ETH/USDC"],
-  abi,
-  provider
-);
-
-const multiCall = new ethers.Contract(
-  config.MULTI_CALL_CONTRACT_ADDRESS,
-  multiCallAbi,
-  provider
-);
-
-const stateContract = new ethers.Contract(
-  config.CORE_CONTRACTS.OVERLAY_V1_STATE_CONTRACT_ADDRESS,
-  abi2,
-  provider
-);
-const tokenContract = new ethers.Contract(
-  config.CORE_CONTRACTS.OVERLAY_V1_TOKEN_CONTRACT_ADDRESS,
-  abi3,
-  provider
-);
+const fs = require("fs");
 
 /**
  * Returns the amount of OVL as collateral in different positions.
@@ -75,15 +58,17 @@ async function getPositionsInMarkets(eventLog, market, i, costData) {
     }
   }
 
-  position.create({
-    market: market[i],
-    date: getDateAndTime(),
-    collateralInOVLBetween0and10: count[0],
-    collateralInOVLBetween11and20: count[1],
-    collateralInOVLBetween21and100: count[2],
-    collateralInOVLBetween101and500: count[3],
-    collateralInOVLBetween501and1000: count[4],
-  });
+  console.log(count[0], count[1], count[2], count[3], count[4], "count");
+
+  // position.create({
+  //   market: market[i],
+  //   date: getDateAndTime(),
+  //   collateralInOVLBetween0and10: count[0],
+  //   collateralInOVLBetween11and20: count[1],
+  //   collateralInOVLBetween21and100: count[2],
+  //   collateralInOVLBetween101and500: count[3],
+  //   collateralInOVLBetween501and1000: count[4],
+  // });
 }
 
 /**
@@ -111,11 +96,14 @@ async function getuPnLinMarket(market, eventLog, i, costData) {
     );
   }
 
-  const valueData = await multiCall.mul(inputs, inputs0);
+  const valueData = await multiCall.multiCall(inputs, inputs0);
+  // console.log(inputs, inputs0);
 
   for (let w = 0; w < eventLog.length; w++) {
     const cost = Number(costData[w]);
     const value = Number(valueData[w]);
+
+    console.log(value, cost);
 
     if (value > cost) {
       const profit = value - cost;
@@ -126,12 +114,12 @@ async function getuPnLinMarket(market, eventLog, i, costData) {
     }
   }
 
-  uPnL.create({
-    market: market[i],
-    date: getDateAndTime(),
-    totalUnrealizedProfit: totalProfit / number,
-    totalUnrealizedLoss: totalLoss / number,
-  });
+  // uPnL.create({
+  //   market: market[i],
+  //   date: getDateAndTime(),
+  //   totalUnrealizedProfit: totalProfit / number,
+  //   totalUnrealizedLoss: totalLoss / number,
+  // });
 }
 
 /**
@@ -161,53 +149,49 @@ async function getTransfersInMarkets(market, i) {
     totalMintedInMarket += Number(mintedEventLog[x].args[2]);
   }
 
-  transfer.create({
-    market: market[i],
-    date: getDateAndTime(),
-    totalMintedOVLInMarket: totalMintedInMarket / number,
-    totalBurntOVLInMarket: totalBurntInMarket / number,
-  });
+  // transfer.create({
+  //   market: market[i],
+  //   date: getDateAndTime(),
+  //   totalMintedOVLInMarket: totalMintedInMarket / number,
+  //   totalBurntOVLInMarket: totalBurntInMarket / number,
+  // });
+
+  console.log(totalBurntInMarket, totalMintedInMarket);
 }
 
 /**
  * Listens to the build function event,
  * calculates the %CapOI bought in new position
  */
-marketContract.on("Build", async (sender, positionId, userOI) => {
-  const marketCapOi = await stateContract.capOi(marketContract.address);
 
-  const collateral = await stateContract.cost(
-    marketContract.address,
-    sender,
-    positionId
-  );
+SOL_USDmarket.on("Build", async (sender, positionId, userOI) => {
+  await read(SOL_USDmarket, sender, positionId, userOI, "SOL/USD");
+});
 
-  const capOI = marketCapOi.toString();
-  const percentage = userOI * 100;
-  const percentageOfCapOiBought = percentage / capOI;
+APE_USDmarket.on("Build", async (sender, positionId, userOI) => {
+  await read(APE_USDmarket, sender, positionId, userOI, "APE/USD");
+});
 
-  builds.create({
-    market: "ETH/USDC",
-    date: getDateAndTime(),
-    capOI: capOI / number,
-    userOI: userOI / number,
-    sender: sender,
-    collateralInOVL: collateral / 1000000000000000000,
-    percentageOfCapOiBought: percentageOfCapOiBought / number,
-  });
+AVAX_USDmarket.on("Build", async (sender, positionId, userOI) => {
+  await read(AVAX_USDmarket, sender, positionId, userOI, "AVAX/USD");
+});
+
+MATIC_USDmarket.on("Build", async (sender, positionId, userOI) => {
+  await read(MATIC_USDmarket, sender, positionId, userOI, "MATIC/USD");
+});
+
+WBTC_USDmarket.on("Build", async (sender, positionId, userOI) => {
+  await read(WBTC_USDmarket, sender, positionId, userOI, "WBTC/USD");
+});
+
+LINK_USDmarket.on("Build", async (sender, positionId, userOI) => {
+  await read(LINK_USDmarket, sender, positionId, userOI, "LINK/USD");
 });
 
 // runs every 30 seconds
 setInterval(async function () {
-  // Current markets on mainnet
-  const markets = ["ETH/USDC"];
-
   for (let i = 0; i < markets.length; i++) {
-    const marketContract = new ethers.Contract(
-      config.MARKETS[markets[i]],
-      abi,
-      provider
-    );
+    const marketContract = getAddress(config.MARKETS[liveMarkets[i]], abi);
 
     const filter = marketContract.filters.Build();
     const eventLog = await marketContract.queryFilter(filter, 0);
@@ -221,7 +205,7 @@ setInterval(async function () {
     for (let e = 0; e < eventLog.length; e++) {
       inputs.push(
         iface.encodeFunctionData("cost", [
-          `${config.MARKETS[markets[i]]}`,
+          `${config.MARKETS[liveMarkets[i]]}`,
           `${eventLog[e].args[0]}`,
           `${eventLog[e].args[1]}`,
         ])
@@ -230,32 +214,13 @@ setInterval(async function () {
       inputs0.push(stateContract.address);
     }
 
-    const costData = await multiCall.mul(inputs0, inputs);
+    const costData = await multiCall.multiCall(inputs0, inputs);
 
-    await getuPnLinMarket(markets, eventLog, i, costData);
-    await getPositionsInMarkets(eventLog, markets, i, costData);
-    await getTransfersInMarkets(markets, i);
+    // await getuPnLinMarket(liveMarkets, eventLog, i, costData);
+    await getPositionsInMarkets(eventLog, liveMarkets, i, costData);
+    await getTransfersInMarkets(liveMarkets, i);
   }
-}, 30000);
-
-function getDateAndTime() {
-  const currentdate = new Date();
-  const datetime =
-    "Last Sync: " +
-    currentdate.getDate() +
-    "/" +
-    (currentdate.getMonth() + 1) +
-    "/" +
-    currentdate.getFullYear() +
-    " @ " +
-    currentdate.getHours() +
-    ":" +
-    currentdate.getMinutes() +
-    ":" +
-    currentdate.getSeconds();
-
-  return datetime;
-}
+}, 40000);
 
 mongoose.connection.once("open", () => {
   console.log("connection ready");
