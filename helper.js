@@ -1,12 +1,16 @@
 const ethers = require("ethers");
+const abi = require("./Abi/abi1.json");
 const config = require("./config.json");
+const abi2 = require("./Abi/abi2.json");
+const abi3 = require("./Abi/abi3.json");
 const builds = require("./build.schema");
+const multiCallAbi = require("./Abi/multicall.json");
 
 const network = {
-  name: "Arbitrum Goerli",
-  chainId: 421613,
+  name: "Arbitrum",
+  chainId: 42161,
   _defaultProvider: (providers) =>
-    new providers.JsonRpcProvider(`https://goerli-rollup.arbitrum.io/rpc`),
+    new providers.JsonRpcProvider("https://arb1.arbitrum.io/rpc"),
 };
 
 const provider = ethers.getDefaultProvider(network);
@@ -42,7 +46,6 @@ const tokenContract = getAddress(
 
 function getAddress(address, abii) {
   const contract = new ethers.Contract(address, abii, provider);
-
   return contract;
 }
 
@@ -77,19 +80,20 @@ async function read(marketContract, sender, positionId, userOI, marketName) {
   const capOI = marketCapOi.toString();
   const percentage = userOI * 100;
   const percentageOfCapOiBought = percentage / capOI;
+  console.log(capOI);
 
-  builds.create({
-    market: marketName,
-    date: getDateAndTime(),
-    capOI: capOI / 1000000000000000000,
-    userOI: userOI / 1000000000000000000,
-    sender: sender,
-    collateralInOVL: collateral / 1000000000000000000,
-    percentageOfCapOiBought: percentageOfCapOiBought / 1000000000000000000,
-  });
+  // builds.create({
+  //   market: marketName,
+  //   date: getDateAndTime(),
+  //   capOI: capOI / 1000000000000000000,
+  //   userOI: userOI / 1000000000000000000,
+  //   sender: sender,
+  //   collateralInOVL: collateral / 1000000000000000000,
+  //   percentageOfCapOiBought: percentageOfCapOiBought / 1000000000000000000,
+  // });
 }
 
-export const helper = {
+module.exports = {
   read,
   multiCall,
   getAddress,

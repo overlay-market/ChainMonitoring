@@ -37,6 +37,8 @@ const {
 
 const fs = require("fs");
 
+const number = 1000000000000000000;
+
 /**
  * Returns the amount of OVL as collateral in different positions.
  */
@@ -58,7 +60,7 @@ async function getPositionsInMarkets(eventLog, market, i, costData) {
     }
   }
 
-  console.log(count[0], count[1], count[2], count[3], count[4], "count");
+  console.log(count[0], count[1], count[2], count[3], count[4]);
 
   // position.create({
   //   market: market[i],
@@ -125,15 +127,15 @@ async function getuPnLinMarket(market, eventLog, i, costData) {
 /**
  * Returns the total minted and burnt OVL in a market.
  */
-async function getTransfersInMarkets(market, i) {
+async function getTransfersInMarkets(market) {
   const filter1 = tokenContract.filters.Transfer(
     ethers.constants.AddressZero,
-    config.MARKETS[market[i]]
+    config.MARKETS[market]
   );
   const mintedEventLog = await tokenContract.queryFilter(filter1, 0);
 
   const filter2 = tokenContract.filters.Transfer(
-    config.MARKETS[market[i]],
+    config.MARKETS[market],
     ethers.constants.AddressZero
   );
   const burntEventLog = await tokenContract.queryFilter(filter2, 0);
@@ -190,7 +192,7 @@ LINK_USDmarket.on("Build", async (sender, positionId, userOI) => {
 
 // runs every 30 seconds
 setInterval(async function () {
-  for (let i = 0; i < markets.length; i++) {
+  for (let i = 0; i < liveMarkets.length; i++) {
     const marketContract = getAddress(config.MARKETS[liveMarkets[i]], abi);
 
     const filter = marketContract.filters.Build();
@@ -216,11 +218,11 @@ setInterval(async function () {
 
     const costData = await multiCall.multiCall(inputs0, inputs);
 
-    // await getuPnLinMarket(liveMarkets, eventLog, i, costData);
-    await getPositionsInMarkets(eventLog, liveMarkets, i, costData);
-    await getTransfersInMarkets(liveMarkets, i);
+    // await getuPnLinMarket(liveMarkets[i], eventLog, i, costData);
+    await getPositionsInMarkets(eventLog, liveMarkets[i], i, costData);
+    await getTransfersInMarkets(liveMarkets[i]);
   }
-}, 40000);
+}, 140000);
 
 mongoose.connection.once("open", () => {
   console.log("connection ready");
