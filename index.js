@@ -10,20 +10,18 @@ const app = express();
 const server = createServer(app);
 const uPnL = require("./uPnL.schema");
 const abi = require("./Abi/abi1.json");
-const abi2 = require("./Abi/abi2.json");
-const abi3 = require("./Abi/abi3.json");
 
-const builds = require("./build.schema");
 const position = require("./position.schema");
 const transfer = require("./transfer.schema");
 const mongoDBUrl = `${process.env.MONGO_DB_URL}`;
-const multiCallAbi = require("./Abi/multicall.json");
 
 const {
   read,
+  provider,
   multiCall,
   getAddress,
   liveMarkets,
+  eigthenZeros,
   stateContract,
   tokenContract,
   SOL_USDmarket,
@@ -35,18 +33,14 @@ const {
   MATIC_USDmarket,
 } = require("./helper");
 
-const fs = require("fs");
-
-const number = 1000000000000000000;
-
 /**
  * Returns the amount of OVL as collateral in different positions.
  */
-async function getPositionsInMarkets(eventLog, market, i, costData) {
+async function getPositionsInMarkets(eventLog, market, costData) {
   const count = [0, 0, 0, 0, 0];
 
   for (let y = 0; y < eventLog.length; y++) {
-    const collateral = Number(costData[y]) / number;
+    const collateral = Number(costData[y]) / eigthenZeros;
     if (collateral > 0 && collateral <= 10) {
       count[0] += 1;
     } else if (collateral > 10 && collateral <= 20) {
@@ -62,15 +56,15 @@ async function getPositionsInMarkets(eventLog, market, i, costData) {
 
   console.log(count[0], count[1], count[2], count[3], count[4]);
 
-  // position.create({
-  //   market: market[i],
-  //   date: getDateAndTime(),
-  //   collateralInOVLBetween0and10: count[0],
-  //   collateralInOVLBetween11and20: count[1],
-  //   collateralInOVLBetween21and100: count[2],
-  //   collateralInOVLBetween101and500: count[3],
-  //   collateralInOVLBetween501and1000: count[4],
-  // });
+  position.create({
+    market: market,
+    date: getDateAndTime(),
+    collateralInOVLBetween0and10: count[0],
+    collateralInOVLBetween11and20: count[1],
+    collateralInOVLBetween21and100: count[2],
+    collateralInOVLBetween101and500: count[3],
+    collateralInOVLBetween501and1000: count[4],
+  });
 }
 
 /**
@@ -127,18 +121,42 @@ async function getuPnLinMarket(market, eventLog, i, costData) {
 /**
  * Returns the total minted and burnt OVL in a market.
  */
-async function getTransfersInMarkets(market) {
+async function getTransfersInMarkets(marketName) {
+  const filter = { market: marketName };
+  doc = await transfer.findOne(filter);
+
+  if (doc == null) {
+    await transfer.create({
+      date: getDateAndTime(),
+      market: marketName,
+      lastBlockNumber: 0,
+      totalBurntOVLInMarket: 0,
+      totalMintedOVLInMarket: 0,
+    });
+
+    console.log("creating");
+    return;
+  }
+
+  const lastBlockNumber = doc.lastBlockNumber;
+
   const filter1 = tokenContract.filters.Transfer(
     ethers.constants.AddressZero,
-    config.MARKETS[market]
+    config.MARKETS[marketName]
   );
-  const mintedEventLog = await tokenContract.queryFilter(filter1, 0);
+  const mintedEventLog = await tokenContract.queryFilter(
+    filter1,
+    lastBlockNumber
+  );
 
   const filter2 = tokenContract.filters.Transfer(
-    config.MARKETS[market],
+    config.MARKETS[marketName],
     ethers.constants.AddressZero
   );
-  const burntEventLog = await tokenContract.queryFilter(filter2, 0);
+  const burntEventLog = await tokenContract.queryFilter(
+    filter2,
+    lastBlockNumber
+  );
 
   let totalBurntInMarket = 0;
   let totalMintedInMarket = 0;
@@ -151,14 +169,23 @@ async function getTransfersInMarkets(market) {
     totalMintedInMarket += Number(mintedEventLog[x].args[2]);
   }
 
-  // transfer.create({
-  //   market: market[i],
-  //   date: getDateAndTime(),
-  //   totalMintedOVLInMarket: totalMintedInMarket / number,
-  //   totalBurntOVLInMarket: totalBurntInMarket / number,
-  // });
+  const totalMinted =
+    doc.totalMintedOVLInMarket + totalMintedInMarket / eigthenZeros;
+  const totalBurnt =
+    doc.totalBurntOVLInMarket + totalBurntInMarket / eigthenZeros;
 
-  console.log(totalBurntInMarket, totalMintedInMarket);
+  if (doc.totalBurntOVLInMarket != totalBurnt) {
+    doc.totalBurntOVLInMarket = totalBurnt;
+  }
+
+  if (doc.totalMintedOVLInMarket != totalMinted) {
+    doc.totalMintedOVLInMarket = totalMinted;
+  }
+
+  doc.lastBlockNumber = await provider.getBlockNumber();
+  await doc.save();
+
+  console.log(totalMintedInMarket, totalBurntInMarket);
 }
 
 /**
@@ -218,11 +245,13 @@ setInterval(async function () {
 
     const costData = await multiCall.multiCall(inputs0, inputs);
 
+    console.log("starting!!");
+
     // await getuPnLinMarket(liveMarkets[i], eventLog, i, costData);
-    await getPositionsInMarkets(eventLog, liveMarkets[i], i, costData);
+    await getPositionsInMarkets(eventLog, liveMarkets[i], costData);
     await getTransfersInMarkets(liveMarkets[i]);
   }
-}, 140000);
+}, 100000);
 
 mongoose.connection.once("open", () => {
   console.log("connection ready");

@@ -1,19 +1,23 @@
 const mongoose = require("mongoose");
 
 const transferSchema = new mongoose.Schema({
-  market: {
-    type: String,
-    required: true,
-  },
   date: {
     type: String,
     required: true,
   },
-  totalMintedOVLInMarket: {
+  market: {
+    type: String,
+    required: true,
+  },
+  lastBlockNumber: {
     type: Number,
     required: true,
   },
   totalBurntOVLInMarket: {
+    type: Number,
+    required: true,
+  },
+  totalMintedOVLInMarket: {
     type: Number,
     required: true,
   },

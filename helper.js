@@ -24,6 +24,8 @@ const liveMarkets = [
   "MATIC/USD",
 ];
 
+const eigthenZeros = 1000000000000000000;
+
 const SOL_USDmarket = getAddress(config.MARKETS["SOL/USD"], abi);
 const APE_USDmarket = getAddress(config.MARKETS["APE/USD"], abi);
 
@@ -52,7 +54,6 @@ function getAddress(address, abii) {
 function getDateAndTime() {
   const currentdate = new Date();
   const datetime =
-    "Last Sync: " +
     currentdate.getDate() +
     "/" +
     (currentdate.getMonth() + 1) +
@@ -82,22 +83,24 @@ async function read(marketContract, sender, positionId, userOI, marketName) {
   const percentageOfCapOiBought = percentage / capOI;
   console.log(capOI);
 
-  // builds.create({
-  //   market: marketName,
-  //   date: getDateAndTime(),
-  //   capOI: capOI / 1000000000000000000,
-  //   userOI: userOI / 1000000000000000000,
-  //   sender: sender,
-  //   collateralInOVL: collateral / 1000000000000000000,
-  //   percentageOfCapOiBought: percentageOfCapOiBought / 1000000000000000000,
-  // });
+  builds.create({
+    market: marketName,
+    date: getDateAndTime(),
+    capOI: capOI / 1000000000000000000,
+    userOI: userOI / 1000000000000000000,
+    sender: sender,
+    collateralInOVL: collateral / 1000000000000000000,
+    percentageOfCapOiBought: percentageOfCapOiBought / 1000000000000000000,
+  });
 }
 
 module.exports = {
   read,
+  provider,
   multiCall,
   getAddress,
   liveMarkets,
+  eigthenZeros,
   stateContract,
   tokenContract,
   SOL_USDmarket,
