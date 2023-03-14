@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const positionSchema = new mongoose.Schema({
+const arbitrumPositionSchema = new mongoose.Schema({
   market: {
     type: String,
     required: true,
@@ -31,5 +31,5 @@ const positionSchema = new mongoose.Schema({
   },
 });
 
-// connect positionSchema with the "positions" collection
-module.exports = mongoose.model("Position", positionSchema);
+// connect arbitrumPositionSchema with the "arbitrumposition" collection
+module.exports = mongoose.model("arbitrumPosition", arbitrumPositionSchema);

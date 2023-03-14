@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const uPnLSchema = new mongoose.Schema({
+const arbitrumUPnLSchema = new mongoose.Schema({
   market: {
     type: String,
     required: true,
@@ -19,5 +19,5 @@ const uPnLSchema = new mongoose.Schema({
   },
 });
 
-// connect uPnLSchema with the "upnls" collection
-module.exports = mongoose.model("uPnL", uPnLSchema);
+// connect arbitrumUPnLSchema with the "arbitrumupnl" collection
+module.exports = mongoose.model("arbitrumUPnL", arbitrumUPnLSchema);

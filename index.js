@@ -8,12 +8,14 @@ const { createServer } = require("http");
 
 const app = express();
 const server = createServer(app);
-const uPnL = require("./uPnL.schema");
+const arbitrumUPnL = require("./arbitrumUPnL.schema");
 const abi = require("./Abi/abi1.json");
 
-const position = require("./position.schema");
-const transfer = require("./transfer.schema");
+const arbitrumPosition = require("./arbitrumPosition.schema");
+const arbitrumTransfer = require("./arbitrumTransfer.schema");
 const mongoDBUrl = `${process.env.MONGO_DB_URL}`;
+
+const fs = require("fs");
 
 const {
   read,
@@ -21,7 +23,7 @@ const {
   multiCall,
   getAddress,
   liveMarkets,
-  eigthenZeros,
+  eigtheenZeros,
   stateContract,
   tokenContract,
   SOL_USDmarket,
@@ -40,7 +42,7 @@ async function getPositionsInMarkets(eventLog, market, costData) {
   const count = [0, 0, 0, 0, 0];
 
   for (let y = 0; y < eventLog.length; y++) {
-    const collateral = Number(costData[y]) / eigthenZeros;
+    const collateral = Number(costData[y]) / eigtheenZeros;
     if (collateral > 0 && collateral <= 10) {
       count[0] += 1;
     } else if (collateral > 10 && collateral <= 20) {
@@ -56,7 +58,7 @@ async function getPositionsInMarkets(eventLog, market, costData) {
 
   console.log(count[0], count[1], count[2], count[3], count[4]);
 
-  position.create({
+  arbitrumPosition.create({
     market: market,
     date: getDateAndTime(),
     collateralInOVLBetween0and10: count[0],
@@ -70,7 +72,7 @@ async function getPositionsInMarkets(eventLog, market, costData) {
 /**
  * Returns the unrealized profit and loss of positions in a market.
  */
-async function getuPnLinMarket(market, eventLog, i, costData) {
+async function getuPnLinMarket(market, eventLog, costData) {
   let totalLoss = 0;
   let totalProfit = 0;
 
@@ -85,7 +87,7 @@ async function getuPnLinMarket(market, eventLog, i, costData) {
 
     inputs0.push(
       iface.encodeFunctionData("value", [
-        `${config.MARKETS[market[i]]}`,
+        `${config.MARKETS[market]}`,
         `${eventLog[z].args[0]}`,
         `${eventLog[z].args[1]}`,
       ])
@@ -93,13 +95,10 @@ async function getuPnLinMarket(market, eventLog, i, costData) {
   }
 
   const valueData = await multiCall.multiCall(inputs, inputs0);
-  // console.log(inputs, inputs0);
 
   for (let w = 0; w < eventLog.length; w++) {
     const cost = Number(costData[w]);
     const value = Number(valueData[w]);
-
-    console.log(value, cost);
 
     if (value > cost) {
       const profit = value - cost;
@@ -110,12 +109,14 @@ async function getuPnLinMarket(market, eventLog, i, costData) {
     }
   }
 
-  // uPnL.create({
-  //   market: market[i],
-  //   date: getDateAndTime(),
-  //   totalUnrealizedProfit: totalProfit / number,
-  //   totalUnrealizedLoss: totalLoss / number,
-  // });
+  arbitrumUPnL.create({
+    market: market,
+    date: getDateAndTime(),
+    totalUnrealizedProfit: totalProfit,
+    totalUnrealizedLoss: totalLoss,
+  });
+
+  console.log("done done");
 }
 
 /**
@@ -123,10 +124,10 @@ async function getuPnLinMarket(market, eventLog, i, costData) {
  */
 async function getTransfersInMarkets(marketName) {
   const filter = { market: marketName };
-  doc = await transfer.findOne(filter);
+  doc = await arbitrumTransfer.findOne(filter);
 
   if (doc == null) {
-    await transfer.create({
+    await arbitrumTransfer.create({
       date: getDateAndTime(),
       market: marketName,
       lastBlockNumber: 0,
@@ -170,9 +171,9 @@ async function getTransfersInMarkets(marketName) {
   }
 
   const totalMinted =
-    doc.totalMintedOVLInMarket + totalMintedInMarket / eigthenZeros;
+    doc.totalMintedOVLInMarket + totalMintedInMarket / eigtheenZeros;
   const totalBurnt =
-    doc.totalBurntOVLInMarket + totalBurntInMarket / eigthenZeros;
+    doc.totalBurntOVLInMarket + totalBurntInMarket / eigtheenZeros;
 
   if (doc.totalBurntOVLInMarket != totalBurnt) {
     doc.totalBurntOVLInMarket = totalBurnt;
@@ -244,10 +245,19 @@ setInterval(async function () {
     }
 
     const costData = await multiCall.multiCall(inputs0, inputs);
+    let b;
 
-    console.log("starting!!");
+    for (let q = 0; q < eventLog.length; q++) {
+      if (costData[q] > 0) {
+        if (q > 0) {
+          const lastClosedPositionInMarket = q - 1;
+          b = eventLog[lastClosedPositionInMarket].blockNumber;
+        }
+        break;
+      }
+    }
 
-    // await getuPnLinMarket(liveMarkets[i], eventLog, i, costData);
+    await getuPnLinMarket(liveMarkets[i], eventLog, costData);
     await getPositionsInMarkets(eventLog, liveMarkets[i], costData);
     await getTransfersInMarkets(liveMarkets[i]);
   }

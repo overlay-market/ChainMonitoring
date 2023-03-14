@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const transferSchema = new mongoose.Schema({
+const arbitrumTransferSchema = new mongoose.Schema({
   date: {
     type: String,
     required: true,
@@ -23,5 +23,5 @@ const transferSchema = new mongoose.Schema({
   },
 });
 
-// connect transferSchema with the "transfers" collection
-module.exports = mongoose.model("Transfer", transferSchema);
+// connect arbitrumTransferSchema with the "arbitrumtransfers" collection
+module.exports = mongoose.model("arbitrumTransfer", arbitrumTransferSchema);

@@ -3,14 +3,16 @@ const abi = require("./Abi/abi1.json");
 const config = require("./config.json");
 const abi2 = require("./Abi/abi2.json");
 const abi3 = require("./Abi/abi3.json");
-const builds = require("./build.schema");
+const arbitrumBuilds = require("./arbitrumBuild.schema");
 const multiCallAbi = require("./Abi/multicall.json");
 
 const network = {
   name: "Arbitrum",
   chainId: 42161,
   _defaultProvider: (providers) =>
-    new providers.JsonRpcProvider("https://arb1.arbitrum.io/rpc"),
+    new providers.JsonRpcProvider(
+      `https://arb-mainnet.g.alchemy.com/v2/${process.env.ID}`
+    ),
 };
 
 const provider = ethers.getDefaultProvider(network);
@@ -24,7 +26,7 @@ const liveMarkets = [
   "MATIC/USD",
 ];
 
-const eigthenZeros = 1000000000000000000;
+const eigtheenZeros = 1000000000000000000;
 
 const SOL_USDmarket = getAddress(config.MARKETS["SOL/USD"], abi);
 const APE_USDmarket = getAddress(config.MARKETS["APE/USD"], abi);
@@ -83,14 +85,14 @@ async function read(marketContract, sender, positionId, userOI, marketName) {
   const percentageOfCapOiBought = percentage / capOI;
   console.log(capOI);
 
-  builds.create({
+  arbitrumBuilds.create({
     market: marketName,
     date: getDateAndTime(),
-    capOI: capOI / 1000000000000000000,
-    userOI: userOI / 1000000000000000000,
+    capOI: capOI,
+    userOI: userOI,
     sender: sender,
-    collateralInOVL: collateral / 1000000000000000000,
-    percentageOfCapOiBought: percentageOfCapOiBought / 1000000000000000000,
+    collateralInOVL: collateral,
+    percentageOfCapOiBought: percentageOfCapOiBought,
   });
 }
 
@@ -100,7 +102,7 @@ module.exports = {
   multiCall,
   getAddress,
   liveMarkets,
-  eigthenZeros,
+  eigtheenZeros,
   stateContract,
   tokenContract,
   SOL_USDmarket,
