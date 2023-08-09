@@ -23,21 +23,17 @@ graphs['mint_gauge'] = Gauge('ovl_token_minted', 'Number of OVL tokens minted')
 
 
 # Query for mint events
-def query_mint_events(timestamp):
+def query_positions(timestamp_lower, timestamp_upper):
     query = f'''
     {{
-        positions(where: {{ createdAtTimestamp_gt: { timestamp } }}, first: 100, orderBy: createdAtTimestamp, orderDirection: desc)  {{
+        positions(where: {{ createdAtTimestamp_gt: { timestamp_lower }, createdAtTimestamp_lt: { timestamp_upper } }}, first: 100, orderBy: createdAtTimestamp, orderDirection: desc)  {{
             id
-            positionId
             createdAtTimestamp
             mint
-            builds {{
-                id
-            }}
         }}
     }}
     '''
-    print('query', query)
+    # print('query', query)
     response = requests.post(SUBGRAPH_URL, json={'query': query})
     return response.json().get('data', {}).get('positions', [])
 
@@ -46,23 +42,48 @@ start_http_server(8000)
 
 # Periodically query for mint events
 def main():
-    last_minted_value = 0
     iteration = 1
-    query_interval = 10 # in seconds
-    timestamp = math.ceil(datetime.datetime.now().timestamp() - (3600 * 24 * 10))
-    print('timestamp', timestamp)
+    query_interval = 5 # in seconds
+    timestamp_window = 3600 * 24 # 1 day
+    # timestamp = math.ceil(datetime.datetime.now().timestamp() - (3600 * 24 * 10))
+
+    timstamp_start = datetime.datetime.now().timestamp() - (3600 * 24 * 30) # last 30 days
+    timestamp_upper = math.ceil(timstamp_start)
+    timestamp_lower = math.ceil(timstamp_start - timestamp_window)
 
     while True:
+        print('===================================')
         print(f'Running iteration #{iteration}...')
-        events = query_mint_events(timestamp)
-        print('mint_events', events)
-        for event in events:
-            value = int(event['mint'])
-            graphs['mint_gauge'].inc(value)
+        print('timestamp_lower', datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S'))
+        print('timestamp_upper', datetime.datetime.utcfromtimestamp(timestamp_upper).strftime('%Y-%m-%d %H:%M:%S'))
+        positions = query_positions(timestamp_lower, timestamp_upper)
+        print('positions', len(positions))
+
+        for position in positions:
+            mint = int(position['mint'])
+            graphs['mint_gauge'].inc(mint)
+        
+        print('mint_gauge', graphs['mint_gauge']._value.get())
+        # Increment iteration
+        iteration += 1
+
         # Wait for the next iteration
         time.sleep(query_interval)
-        iteration += 1
-        # timestamp = math.ceil(datetime.datetime.now().timestamp() - (1600 * 24))
+
+        if positions:
+            # set timestamp range lower bound to timestamp of latest event
+            timestamp_lower = int(positions[0]['createdAtTimestamp'])
+            if len(positions) > 1:
+                timestamp_upper = int(positions[-1]['createdAtTimestamp'])
+            else:
+                timestamp_upper += timestamp_window
+        else:
+            timestamp_lower = timestamp_upper
+            timestamp_upper += timestamp_window
+
+        # set timestamp range upper bound to timestamp now
+        # timestamp_upper = math.ceil(datetime.datetime.now().timestamp())
+
 
 if __name__ == '__main__':
     main()
