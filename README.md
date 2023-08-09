@@ -1,2 +1,2 @@
-# chain-monitoring
+# ChainMonitoring
 Chain Monitoring using Prometheus
