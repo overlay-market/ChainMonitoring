@@ -683,7 +683,7 @@
               "thresholds": [],
               "timeFrom": null,
               "timeShift": null,
-              "title": "Mint (Python)",
+              "title": "Number of OVL tokens minted",
               "tooltip": {
                 "shared": true,
                 "sort": 0,
@@ -717,7 +717,7 @@
               ]
             }
           ],
-          "title": "Python",
+          "title": "Chain Monitoring",
           "type": "row"
         }
       ],
