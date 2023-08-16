@@ -1,0 +1,12 @@
+groups:
+  - name: chain_monitoring_alert_group
+    rules:
+      - alert: HighSuddenIncreaseInOVLTokenMinted
+        expr: |
+          irate(ovl_token_minted[1m]) > 10
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: High sudden increase in ovl_token_minted
+          description: The ovl_token_minted gauge metric has experienced a sudden increase.

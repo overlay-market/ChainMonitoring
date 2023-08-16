@@ -1,29 +1,22 @@
-from flask import Response, Flask
-
 import datetime
 import math
 import time
 import requests
-import prometheus_client
 from prometheus_client import Gauge, start_http_server
-import threading
 
-app = Flask(__name__)
 
 # Subgraph endpoint
 # SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/bigboydiamonds/overlay-v1-subgraph'
-SUBGRAPH_URL = 'https://api.studio.thegraph.com/proxy/49419/overlay-contracts/v0.0.7'
+SUBGRAPH_URL = 'https://api.studio.thegraph.com/proxy/49419/overlay-contracts/v0.0.8'
 
 # Prometheus metric
 # mint_gauge = Gauge('ovl_token_minted', 'Number of OVL tokens minted')
 
 graphs = {}
 graphs['mint_gauge'] = Gauge('ovl_token_minted', 'Number of OVL tokens minted')
-# graphs['h'] = Histogram('python_request_duration_seconds', 'Histogram for the duration in seconds.', buckets=(1, 2, 5, 6, 10, _INF))
 
-
-# Query for mint events
-def query_positions(timestamp_lower, timestamp_upper, page_size = 100):
+def query_all_positions(timestamp_lower, timestamp_upper, page_size=500):
+    all_positions = []
     query = f'''
     {{
         positions(where: {{ createdAtTimestamp_gt: { timestamp_lower }, createdAtTimestamp_lt: { timestamp_upper } }}, first: {page_size}, orderBy: createdAtTimestamp, orderDirection: desc)  {{
@@ -33,9 +26,27 @@ def query_positions(timestamp_lower, timestamp_upper, page_size = 100):
         }}
     }}
     '''
-    # print('query', query)
     response = requests.post(SUBGRAPH_URL, json={'query': query})
-    return response.json().get('data', {}).get('positions', [])
+    curr_positions = response.json().get('data', {}).get('positions', [])
+    page_count = 0
+    while len(curr_positions) > 0:
+        page_count += 1
+        print(f'Fetching page # {page_count}')
+        all_positions.extend(curr_positions)
+        query = f'''
+        {{
+            positions(where: {{ createdAtTimestamp_gt: {timestamp_lower}, createdAtTimestamp_lt: { int(curr_positions[-1]['createdAtTimestamp']) } }}, first: {page_size}, orderBy: createdAtTimestamp, orderDirection: desc)  {{
+                id
+                createdAtTimestamp
+                mint
+            }}
+        }}
+        '''
+        response = requests.post(SUBGRAPH_URL, json={'query': query})
+        curr_positions = response.json().get('data', {}).get('positions', [])
+    
+    return all_positions
+
 
 def get_mint_total(page_size = 1000):
     all_positions = []
@@ -80,42 +91,46 @@ start_http_server(8000)
 def main():
     iteration = 1
     query_interval = 5 # in seconds
-    timestamp_window = 3600 * 24 # 1 day
+    timestamp_window = 3600 * 24 * 1 # 1 day
     # timestamp = math.ceil(datetime.datetime.now().timestamp() - (3600 * 24 * 10))
 
-    timstamp_start = datetime.datetime.now().timestamp() - (3600 * 24 * 30) # last 30 days
+    timstamp_start = datetime.datetime.now().timestamp() - (3600 * 24 * 30 * 6) # last 6 months
     timestamp_upper = math.ceil(timstamp_start)
     timestamp_lower = math.ceil(timstamp_start - timestamp_window)
 
     while True:
         print('===================================')
         print(f'Running iteration #{iteration}...')
-        print('timestamp_lower', datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S'))
-        print('timestamp_upper', datetime.datetime.utcfromtimestamp(timestamp_upper).strftime('%Y-%m-%d %H:%M:%S'))
-        positions = query_positions(timestamp_lower, timestamp_upper)
+        print('timestamp_lower', datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S'), timestamp_lower)
+        print('timestamp_upper', datetime.datetime.utcfromtimestamp(timestamp_upper).strftime('%Y-%m-%d %H:%M:%S'), timestamp_upper)
+        positions = query_all_positions(timestamp_lower, timestamp_upper)
         print('positions', len(positions))
 
         for position in positions:
             mint = int(position['mint'])
             graphs['mint_gauge'].inc(mint)
+            # print('mint_gauge', graphs['mint_gauge']._value.get())
         
-        print('mint_gauge', graphs['mint_gauge']._value.get())
+        print('time now', datetime.datetime.now())
+        print('final mint_gauge', graphs['mint_gauge']._value.get())
         # Increment iteration
         iteration += 1
 
         # Wait for the next iteration
         time.sleep(query_interval)
 
-        if positions:
-            # set timestamp range lower bound to timestamp of latest event
-            timestamp_lower = int(positions[0]['createdAtTimestamp'])
-            if len(positions) > 1:
-                timestamp_upper = int(positions[-1]['createdAtTimestamp'])
-            else:
-                timestamp_upper += timestamp_window
-        else:
-            timestamp_lower = timestamp_upper
-            timestamp_upper += timestamp_window
+        # if positions:
+        #     # set timestamp range lower bound to timestamp of latest event
+        #     timestamp_lower = int(positions[0]['createdAtTimestamp'])
+        #     if len(positions) > 1:
+        #         timestamp_upper = int(positions[-1]['createdAtTimestamp'])
+        #     else:
+        #         timestamp_upper += timestamp_window
+        # else:
+        timestamp_lower = timestamp_upper
+        timestamp_upper += timestamp_window
+        if timestamp_upper > datetime.datetime.now().timestamp():
+            timestamp_upper = datetime.datetime.now().timestamp()
 
         # set timestamp range upper bound to timestamp now
         # timestamp_upper = math.ceil(datetime.datetime.now().timestamp())
@@ -140,7 +155,7 @@ def main_realtime():
         print(f'Running iteration #{iteration}...')
         print('timestamp_lower', datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S'))
         print('timestamp_upper', datetime.datetime.utcfromtimestamp(timestamp_upper).strftime('%Y-%m-%d %H:%M:%S'))
-        positions = query_positions(timestamp_lower, timestamp_upper)
+        positions = query_all_positions(timestamp_lower, timestamp_upper)
         print('positions', len(positions))
 
         for position in positions:
@@ -170,8 +185,8 @@ def main_realtime():
 
 
 if __name__ == '__main__':
-    # main()
-    main_realtime()
+    main()
+    # main_realtime()
     # get_mint_total()
 
 # main()
