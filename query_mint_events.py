@@ -100,6 +100,7 @@ def main():
     iteration = 1
     query_interval = 10 # in seconds
     timestamp_window = 3600 * 24 * 1 # 1 day
+    mint_divisor = 10 ** 18
 
     timstamp_start = datetime.datetime.now().timestamp() - (3600 * 24 * 30 * 6) # last 6 months
     timestamp_upper = math.ceil(timstamp_start)
@@ -114,12 +115,12 @@ def main():
         print('positions', len(positions))
 
         for position in positions:
-            mint = int(position['mint'])
+            mint = int(position['mint']) / mint_divisor
             # graphs['mint_gauge'].inc(mint)
-            graphs['mint_gauge'].labels(market=position['market']['id']).inc()
+            graphs['mint_gauge'].labels(market=position['market']['id']).inc(mint)
         
         print('time now', datetime.datetime.now())
-        # print('final mint_gauge', graphs['mint_gauge'].labels(market=position['market']['id']).value.get())
+        # print('final mint_gauge', graphs['mint_gauge'].labels(market=position['market']['id'])._value.get())
         # Increment iteration
         iteration += 1
 
