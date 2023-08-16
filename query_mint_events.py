@@ -6,16 +6,12 @@ from prometheus_client import Gauge, start_http_server
 
 
 # Subgraph endpoint
-# SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/bigboydiamonds/overlay-v1-subgraph'
 SUBGRAPH_URL = 'https://api.studio.thegraph.com/proxy/49419/overlay-contracts/v0.0.8'
 
-# Prometheus metric
-# mint_gauge = Gauge('ovl_token_minted', 'Number of OVL tokens minted')
-
 graphs = {}
-graphs['mint_gauge'] = Gauge('ovl_token_minted', 'Number of OVL tokens minted')
+graphs['mint_gauge'] = Gauge('ovl_token_minted', 'Number of OVL tokens minted', ['market'])
 
-def query_all_positions(timestamp_lower, timestamp_upper, page_size=500):
+def query_positions(timestamp_lower, timestamp_upper, page_size=500):
     all_positions = []
     query = f'''
     {{
@@ -23,6 +19,9 @@ def query_all_positions(timestamp_lower, timestamp_upper, page_size=500):
             id
             createdAtTimestamp
             mint
+            market {{
+                id
+            }}
         }}
     }}
     '''
@@ -39,6 +38,9 @@ def query_all_positions(timestamp_lower, timestamp_upper, page_size=500):
                 id
                 createdAtTimestamp
                 mint
+                market {{
+                    id
+                }}
             }}
         }}
         '''
@@ -56,6 +58,9 @@ def get_mint_total(page_size = 1000):
             id
             createdAtTimestamp
             mint
+            market {{
+                id
+            }}
         }}
     }}
     '''
@@ -74,6 +79,9 @@ def get_mint_total(page_size = 1000):
                 id
                 createdAtTimestamp
                 mint
+                market {{
+                    id
+                }}
             }}
         }}
         '''
@@ -90,9 +98,8 @@ start_http_server(8000)
 # Periodically query for mint events
 def main():
     iteration = 1
-    query_interval = 5 # in seconds
+    query_interval = 10 # in seconds
     timestamp_window = 3600 * 24 * 1 # 1 day
-    # timestamp = math.ceil(datetime.datetime.now().timestamp() - (3600 * 24 * 10))
 
     timstamp_start = datetime.datetime.now().timestamp() - (3600 * 24 * 30 * 6) # last 6 months
     timestamp_upper = math.ceil(timstamp_start)
@@ -103,30 +110,22 @@ def main():
         print(f'Running iteration #{iteration}...')
         print('timestamp_lower', datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S'), timestamp_lower)
         print('timestamp_upper', datetime.datetime.utcfromtimestamp(timestamp_upper).strftime('%Y-%m-%d %H:%M:%S'), timestamp_upper)
-        positions = query_all_positions(timestamp_lower, timestamp_upper)
+        positions = query_positions(timestamp_lower, timestamp_upper)
         print('positions', len(positions))
 
         for position in positions:
             mint = int(position['mint'])
-            graphs['mint_gauge'].inc(mint)
-            # print('mint_gauge', graphs['mint_gauge']._value.get())
+            # graphs['mint_gauge'].inc(mint)
+            graphs['mint_gauge'].labels(market=position['market']['id']).inc()
         
         print('time now', datetime.datetime.now())
-        print('final mint_gauge', graphs['mint_gauge']._value.get())
+        # print('final mint_gauge', graphs['mint_gauge'].labels(market=position['market']['id']).value.get())
         # Increment iteration
         iteration += 1
 
         # Wait for the next iteration
         time.sleep(query_interval)
 
-        # if positions:
-        #     # set timestamp range lower bound to timestamp of latest event
-        #     timestamp_lower = int(positions[0]['createdAtTimestamp'])
-        #     if len(positions) > 1:
-        #         timestamp_upper = int(positions[-1]['createdAtTimestamp'])
-        #     else:
-        #         timestamp_upper += timestamp_window
-        # else:
         timestamp_lower = timestamp_upper
         timestamp_upper += timestamp_window
         if timestamp_upper > datetime.datetime.now().timestamp():
@@ -155,7 +154,7 @@ def main_realtime():
         print(f'Running iteration #{iteration}...')
         print('timestamp_lower', datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S'))
         print('timestamp_upper', datetime.datetime.utcfromtimestamp(timestamp_upper).strftime('%Y-%m-%d %H:%M:%S'))
-        positions = query_all_positions(timestamp_lower, timestamp_upper)
+        positions = query_positions(timestamp_lower, timestamp_upper)
         print('positions', len(positions))
 
         for position in positions:
