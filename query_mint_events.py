@@ -118,6 +118,7 @@ def main():
             mint = int(position['mint']) / mint_divisor
             # graphs['mint_gauge'].inc(mint)
             graphs['mint_gauge'].labels(market=position['market']['id']).inc(mint)
+            graphs['mint_gauge'].labels(market='').inc(mint)
         
         print('time now', datetime.datetime.now())
         # print('final mint_gauge', graphs['mint_gauge'].labels(market=position['market']['id'])._value.get())
