@@ -45,6 +45,11 @@ We're leveraging docker and docker compose for this project. This makes it easy 
    - Prometheus - http://localhost:9091/
    - Chain Monitoring Python application - http://localhost:81/
 
+If there are code changes to the python application, re-build the docker container for the python application before running `docker-compose up`.
+```
+docker-compose build chain-monitoring
+```
+
 ### Bare Python setup
 This only runs the Python application. To emulate the complete monitoring functionality in your local machine, opt for the Docker setup instead.
 1. Install requirements
