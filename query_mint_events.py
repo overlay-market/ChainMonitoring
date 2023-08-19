@@ -207,7 +207,3 @@ def main_realtime():
 
 if __name__ == '__main__':
     main()
-    # main_realtime()
-    # get_mint_total()
-
-# main()
