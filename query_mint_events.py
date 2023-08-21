@@ -62,9 +62,9 @@ def main_realtime():
     mint_divisor = 10 ** 18
 
     mint_total, mint_total_per_market = subgraph_client.get_mint_total_per_market()
-    graphs['mint_gauge'].labels(market='').set(mint_total)
+    graphs['mint_gauge'].labels(market='').set(mint_total / mint_divisor)
     for market_id in mint_total_per_market:
-        graphs['mint_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[market_id]).set(mint_total_per_market[market_id])
+        graphs['mint_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[market_id]).set(mint_total_per_market[market_id] / mint_divisor)
 
     # first ever timestamp is 1677258816
     # timstamp_start = datetime.datetime.now().timestamp() - (3600 * 24 * 30) # last 30 days
