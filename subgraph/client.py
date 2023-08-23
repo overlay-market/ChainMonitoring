@@ -71,7 +71,9 @@ class ResourceClient:
 
             query = f'''
             {{
-                positions(where: {{ createdAtTimestamp_lt: { int(curr_positions[-1]['createdAtTimestamp']) } }}, first: {page_size}, orderBy: createdAtTimestamp, orderDirection: desc)  {{
+                positions(
+                    where: {{ createdAtTimestamp_lt: { int(curr_positions[-1]['createdAtTimestamp']) } }}, 
+                    first: {page_size}, orderBy: createdAtTimestamp, orderDirection: desc)  {{
                     id
                     createdAtTimestamp
                     mint
@@ -88,3 +90,46 @@ class ResourceClient:
         print('mint_total', mint_total)
         print('mint_total_per_market', mint_total_per_market)
         return mint_total, mint_total_per_market
+
+    def get_builds(self, page_size=PAGE_SIZE):
+        all_builds = []
+        query = f'''
+        {{
+            builds(first: {page_size}, orderBy: timestamp, orderDirection: desc) {{
+                timestamp
+                collateral
+                id
+                position {{
+                    currentOi
+                    fractionUnwound
+                }}
+                owner {{
+                    id
+                }}
+            }}
+        }}
+        '''
+        response = requests.post(self.URL, json={'query': query})
+        curr_builds = response.json().get('data', {}).get('builds', [])
+        while len(curr_builds) > 0:
+            all_builds.extend(curr_builds)
+            query = f'''
+            {{
+                builds(where: {{ timestamp_lt: { int(curr_builds[-1]['timestamp']) } }}, first: {page_size}, orderBy: timestamp, orderDirection: desc) {{
+                    timestamp
+                    collateral
+                    id
+                    position {{
+                        currentOi
+                        fractionUnwound
+                    }}
+                    owner {{
+                        id
+                    }}
+                }}
+            }}
+            '''
+            response = requests.post(self.URL, json={'query': query})
+            curr_builds = response.json().get('data', {}).get('builds', [])
+        
+        return all_builds
