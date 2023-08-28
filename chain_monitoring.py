@@ -86,7 +86,6 @@ async def process_live_positions(live_positions):
         if index_upper > len(pos_list):
             index_upper = len(pos_list)
         curr_post_list = pos_list[index_lower:index_upper]
-        state = load_contract(STATE)
         values.extend(
             await asyncio.gather(*[get_pos_value(state, pos) for pos in curr_post_list])
         )
@@ -103,8 +102,8 @@ async def query_upnl():
     print('[upnl] Starting query...')
     iteration = 1
     query_interval = 10 # in seconds
-    timestamp_window = 60 * 60 * 24 * 100 # in seconds
-    timstamp_start = datetime.datetime.now().timestamp()
+    timestamp_window = 10 # in seconds
+    timestamp_start = datetime.datetime.now().timestamp()
 
     # Fetch all live positions so far from the subgraph
     live_positions = subgraph_client.get_all_live_positions()
@@ -125,10 +124,8 @@ async def query_upnl():
     print('upnl_total_per_market!!', upnl_total_per_market)
 
     print('live_positions size!', len(live_positions))
-    print('live_positions!', live_positions)
-
-    timestamp_lower = math.ceil(timstamp_start - timestamp_window)
-    timestamp_upper = math.ceil(timstamp_start)
+    timestamp_lower = math.ceil(timestamp_start)
+    timestamp_upper = math.ceil(timestamp_start + timestamp_window)
 
     while True:
         print('===================================')
@@ -138,6 +135,7 @@ async def query_upnl():
 
         # Fetch new live positions
         live_positions = subgraph_client.get_live_positions(timestamp_lower, timestamp_upper)
+        print(f'[upnl] live_positions', len(live_positions))
 
         # Calculate current value of each live position
         if len(live_positions) > 0:
@@ -152,7 +150,7 @@ async def query_upnl():
         # Wait for the next iteration
         await asyncio.sleep(query_interval)
 
-        if live_positions:
+        if len(live_positions) > 0:
             # set timestamp range lower bound to timestamp of latest event
             timestamp_lower = int(live_positions[0]['timestamp'])
             if len(live_positions) > 1:
@@ -178,9 +176,9 @@ def query_mint():
         metrics['mint_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[market_id]).set(mint_total_per_market[market_id] / mint_divisor)
 
     # the first ever timestamp for positions is 1677258816
-    timstamp_start = datetime.datetime.now().timestamp() - (timestamp_window)
-    timestamp_lower = math.ceil(timstamp_start - timestamp_window)
-    timestamp_upper = math.ceil(timstamp_start)
+    timestamp_start = datetime.datetime.now().timestamp() - (timestamp_window)
+    timestamp_lower = math.ceil(timestamp_start - timestamp_window)
+    timestamp_upper = math.ceil(timestamp_start)
 
     while True:
         print('===================================')
@@ -190,6 +188,7 @@ def query_mint():
         
         # Update ovl_token_minted metric
         positions = subgraph_client.get_positions(timestamp_lower, timestamp_upper)
+        print(f'[ovl_token_minted] positions', len(positions))
         for position in positions:
             mint = int(position['mint']) / mint_divisor
             metrics['mint_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[position['market']['id']]).inc(mint)
