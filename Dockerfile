@@ -1,12 +1,12 @@
-FROM python:3.11
+FROM python:3.9
 
 RUN mkdir /app/
 WORKDIR /app/
 
-COPY ./requirements.txt /app/requirements.txt
+COPY ./requirements-eth-brownie-1.19.3.txt /app/requirements.txt
 RUN pip install -r requirements.txt
 
 COPY ./ /app/
 
 EXPOSE 8000
-CMD python query_mint_events.py
+CMD python chain_monitoring.py
