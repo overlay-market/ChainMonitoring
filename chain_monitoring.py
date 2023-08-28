@@ -86,6 +86,7 @@ async def process_live_positions(live_positions):
         if index_upper > len(pos_list):
             index_upper = len(pos_list)
         curr_post_list = pos_list[index_lower:index_upper]
+        state = load_contract(STATE)
         values.extend(
             await asyncio.gather(*[get_pos_value(state, pos) for pos in curr_post_list])
         )
@@ -214,7 +215,6 @@ def query_mint():
 
 if __name__ == '__main__':
     # asyncio.run(query_upnl())
-
     thread_mint = threading.Thread(target=query_mint)
     thread_upnl = threading.Thread(target=asyncio.run, args=(query_upnl(),))
 

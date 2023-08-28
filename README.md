@@ -65,7 +65,7 @@ This only runs the Python application. To emulate the complete monitoring functi
    ```
 2. Run python app
    ```
-   python query_mint_events.py
+   python chain_monitoring.py
    ```
 
 ## Deployment
