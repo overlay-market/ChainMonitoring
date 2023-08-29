@@ -11,7 +11,7 @@ from dank_mids.helpers import setup_dank_w3_from_sync
 
 from prometheus_metrics import metrics
 from subgraph.client import ResourceClient as SubgraphClient
-from subgraph.constants import MAP_MARKET_ID_TO_NAME
+from subgraph.constants import MAP_MARKET_ID_TO_NAME as MARKET_MAP
 
 network.connect('arbitrum-main')
 
@@ -110,15 +110,28 @@ async def query_upnl():
     upnl_total = live_positions_df['upnl'].sum()
     upnl_total_per_market_df = live_positions_df.groupby(by='market')['upnl'].sum().reset_index()
     upnl_total_per_market = dict(zip(upnl_total_per_market_df['market'], upnl_total_per_market_df['upnl']))
-
     metrics['upnl_gauge'].labels(market='').set(upnl_total)
     for market_id in upnl_total_per_market:
-        metrics['upnl_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[market_id]).set(upnl_total_per_market[market_id])
-
+        metrics['upnl_gauge'].labels(market=MARKET_MAP[market_id]).set(upnl_total_per_market[market_id])
     print('upnl_total!!', upnl_total)
     print('upnl_total_per_market!!', upnl_total_per_market)
 
-    print('live_positions size!', len(live_positions))
+    # Set initial value for collateral metric so far
+    collateral_total = live_positions_df['collateral_rem'].sum()
+    collateral_total_per_market_df = live_positions_df.groupby(by='market')['collateral_rem'].sum().reset_index()
+    collateral_total_per_market = dict(zip(collateral_total_per_market_df['market'], collateral_total_per_market_df['collateral_rem']))
+    print('collateral_total!!', collateral_total)
+    print('collateral_total_per_market', collateral_total_per_market)
+    metrics['collateral_rem_gauge'].labels(market='').set(collateral_total)
+    for market_id in collateral_total_per_market:
+        metrics['collateral_rem_gauge'].labels(market=MARKET_MAP[market_id]).set(collateral_total_per_market[market_id])
+        metrics['upnl_pct_gauge'].labels(market=MARKET_MAP[market_id]).set(
+            upnl_total_per_market[market_id] / collateral_total_per_market[market_id]
+        )
+
+    # live_positions_df['upnl_pct'] = live_positions_df['upnl'] / live_positions_df['collateral_rem']
+    metrics['upnl_pct_gauge'].labels(market='').set(upnl_total / collateral_total)
+
     timestamp_lower = math.ceil(timestamp_start)
     timestamp_upper = math.ceil(timestamp_start + timestamp_window)
 
@@ -136,8 +149,23 @@ async def query_upnl():
         if len(live_positions) > 0:
             live_positions_df = await process_live_positions(live_positions)
             for position in live_positions_df.to_dict(orient='records'):
-                metrics['upnl_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[position['market']]).inc(position['upnl'])
+                market = MARKET_MAP[position['market']]
+                metrics['upnl_gauge'].labels(market=market).inc(position['upnl'])
                 metrics['upnl_gauge'].labels(market='').inc(position['upnl'])
+
+                metrics['collateral_rem_gauge'].labels(market=market).inc(position['collateral_rem'])
+                metrics['collateral_rem_gauge'].labels(market='').inc(position['collateral_rem'])
+                
+                # live_positions_df['upnl_pct'] = live_positions_df['upnl'] / live_positions_df['collateral_rem']
+                # ._value.get()
+                metrics['upnl_pct_gauge'].labels(market=market).set(
+                    metrics['upnl_gauge'].labels(market=market)._value.get()
+                    / metrics['collateral_rem_gauge'].labels(market=market)._value.get()
+                )
+                metrics['upnl_pct_gauge'].labels(market='').set(
+                    metrics['upnl_gauge'].labels(market='')._value.get()
+                    / metrics['collateral_rem_gauge'].labels(market='')._value.get()
+                )
 
         # Increment iteration
         iteration += 1
@@ -157,3 +185,6 @@ async def query_upnl():
             timestamp_upper += timestamp_window
 
 thread = threading.Thread(target=asyncio.run, args=(query_upnl(),))
+
+if __name__ == '__main__':
+    asyncio.run(query_upnl)
