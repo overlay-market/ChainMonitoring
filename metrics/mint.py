@@ -13,9 +13,9 @@ subgraph_client = SubgraphClient()
 
 def set_metrics_to_nan():
     # Set metric to NaN to indicate that something went wrong with the query
-    metrics['mint_gauge'].labels(market=ALL_MARKET_LABEL).set(0)
+    metrics['mint_gauge'].labels(market=ALL_MARKET_LABEL).set(math.nan)
     for market in AVAILABLE_MARKETS:
-        metrics['mint_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[market]).set(0)
+        metrics['mint_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[market]).set(math.nan)
 
 
 def query_mint():
@@ -52,6 +52,9 @@ def query_mint():
                     datetime.datetime.utcfromtimestamp(timestamp_upper).strftime('%Y-%m-%d %H:%M:%S')
                 )
                 
+                # if iteration == 5:
+                #     1 / 0
+
                 # Update ovl_token_minted metric
                 positions = subgraph_client.get_positions(timestamp_lower, timestamp_upper)
                 positions = [
@@ -87,7 +90,7 @@ def query_mint():
                     f"[ovl_token_minted] An error occurred on iteration "
                     f"{iteration} timestamp_lower "
                     f"{datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S')}:", e)
-                set_metrics_to_nan()
+                
     except Exception as e:
         print(f"[ovl_token_minted] An error occurred:", e)
         set_metrics_to_nan()

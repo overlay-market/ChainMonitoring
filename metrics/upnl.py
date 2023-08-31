@@ -182,7 +182,6 @@ async def query_upnl():
                     f"[upnl] An error occurred on iteration "
                     f"{iteration} timestamp_lower "
                     f"{datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S')}:", e)
-                set_metrics_to_nan()
     except Exception as e:
         print(f"[upnl] An error occurred:", e)
         set_metrics_to_nan()
