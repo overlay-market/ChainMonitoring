@@ -79,9 +79,10 @@
               "steppedLine": false,
               "targets": [
                 {
-                  "expr": "ovl_token_minted",
+                  "expr": "ovl_token_minted{instance=\"chain-monitoring:8000\", job=\"my-application\"}",
                   "format": "time_series",
                   "intervalFactor": 1,
+                  "legendFormat": "{{market}}",
                   "refId": "A"
                 }
               ],
