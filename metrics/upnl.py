@@ -176,7 +176,7 @@ async def query_upnl():
                         timestamp_upper += timestamp_window
                 else:
                     timestamp_lower = timestamp_upper
-                    timestamp_upper += timestamp_window
+                    timestamp_upper += datetime.datetime.now().timestamp()
             except Exception as e:
                 print(
                     f"[upnl] An error occurred on iteration "
