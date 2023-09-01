@@ -23,7 +23,6 @@ def query_mint():
     try:
         iteration = 1
         query_interval = 10 # in seconds
-        timestamp_window = 20 # in seconds
         mint_divisor = 10 ** 18
 
         # Calculate the total mint so far from the subgraph
@@ -34,15 +33,16 @@ def query_mint():
                 continue
             metrics['mint_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[market_id]).set(mint_total_per_market[market_id] / mint_divisor)
 
-        # the first ever timestamp for positions is 1677258816
-        timestamp_start = datetime.datetime.now().timestamp() - (timestamp_window)
-        timestamp_lower = math.ceil(timestamp_start - timestamp_window)
-        timestamp_upper = math.ceil(timestamp_start)
+        timestamp_start = datetime.datetime.now().timestamp()
+        time.sleep(query_interval)
+        timestamp_lower = math.ceil(timestamp_start)
+        timestamp_upper = math.ceil(datetime.datetime.now().timestamp())
 
         while True:
             try:
                 print('===================================')
                 print(f'[ovl_token_minted] Running iteration #{iteration}...')
+                timestamp_start = math.ceil(datetime.datetime.now().timestamp())
                 print(
                     '[ovl_token_minted] timestamp_lower',
                     datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S')
@@ -51,9 +51,6 @@ def query_mint():
                     '[ovl_token_minted] timestamp_upper',
                     datetime.datetime.utcfromtimestamp(timestamp_upper).strftime('%Y-%m-%d %H:%M:%S')
                 )
-                
-                # if iteration == 5:
-                #     1 / 0
 
                 # Update ovl_token_minted metric
                 positions = subgraph_client.get_positions(timestamp_lower, timestamp_upper)
@@ -63,6 +60,8 @@ def query_mint():
                     if position['market']['id'] in AVAILABLE_MARKETS
                 ]
                 print(f'[ovl_token_minted] positions', len(positions))
+                # metrics['mint_gauge'].labels(market='LINK / USD').inc(500)
+                # metrics['mint_gauge'].labels(market='SOL / USD').inc(-500)
                 for position in positions:
                     mint = int(position['mint']) / mint_divisor
                     market = MAP_MARKET_ID_TO_NAME[position['market']['id']]
@@ -81,10 +80,10 @@ def query_mint():
                     if len(positions) > 1:
                         timestamp_upper = int(positions[-1]['createdAtTimestamp'])
                     else:
-                        timestamp_upper += timestamp_window
+                        timestamp_upper = timestamp_start
                 else:
                     timestamp_lower = timestamp_upper
-                    timestamp_upper = datetime.datetime.now().timestamp()
+                    timestamp_upper = timestamp_start
             except Exception as e:
                 print(
                     f"[ovl_token_minted] An error occurred on iteration "

@@ -90,8 +90,6 @@ async def query_upnl():
     try:
         iteration = 1
         query_interval = 10 # in seconds
-        timestamp_window = 10 # in seconds
-        timestamp_start = datetime.datetime.now().timestamp()
 
         # Fetch all live positions so far from the subgraph
         live_positions = subgraph_client.get_all_live_positions()
@@ -124,14 +122,17 @@ async def query_upnl():
 
         # live_positions_df['upnl_pct'] = live_positions_df['upnl'] / live_positions_df['collateral_rem']
         metrics['upnl_pct_gauge'].labels(market=ALL_MARKET_LABEL).set(upnl_total / collateral_total)
-
+       
+        timestamp_start = datetime.datetime.now().timestamp()
+        await asyncio.sleep(query_interval)
         timestamp_lower = math.ceil(timestamp_start)
-        timestamp_upper = math.ceil(timestamp_start + timestamp_window)
+        timestamp_upper = math.ceil(datetime.datetime.now().timestamp())
 
         while True:
             try:
                 print('===================================')
                 print(f'[upnl] Running iteration #{iteration}...')
+                timestamp_start = math.ceil(datetime.datetime.now().timestamp())
                 print('[upnl] timestamp_lower', datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S'))
                 print('[upnl] timestamp_upper', datetime.datetime.utcfromtimestamp(timestamp_upper).strftime('%Y-%m-%d %H:%M:%S'))
 
@@ -173,10 +174,10 @@ async def query_upnl():
                     if len(live_positions) > 1:
                         timestamp_upper = int(live_positions[-1]['timestamp'])
                     else:
-                        timestamp_upper += timestamp_window
+                        timestamp_upper = timestamp_start
                 else:
                     timestamp_lower = timestamp_upper
-                    timestamp_upper += datetime.datetime.now().timestamp()
+                    timestamp_upper = timestamp_start
             except Exception as e:
                 print(
                     f"[upnl] An error occurred on iteration "
