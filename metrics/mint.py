@@ -20,6 +20,7 @@ def set_metrics_to_nan():
 
 def query_mint():
     print('[ovl_token_minted] Starting query...')
+    set_metrics_to_nan()
     try:
         iteration = 1
         query_interval = 10 # in seconds
@@ -27,11 +28,19 @@ def query_mint():
 
         # Calculate the total mint so far from the subgraph
         mint_total, mint_total_per_market = subgraph_client.get_mint_total_per_market()
-        metrics['mint_gauge'].labels(market=ALL_MARKET_LABEL).set(mint_total / mint_divisor)
+        mint_total = 0
         for market_id in mint_total_per_market:
             if market_id not in AVAILABLE_MARKETS:
                 continue
-            metrics['mint_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[market_id]).set(mint_total_per_market[market_id] / mint_divisor)
+            market_total_mint = mint_total_per_market[market_id] / mint_divisor
+            mint_total += market_total_mint
+        metrics['mint_gauge'].labels(market=ALL_MARKET_LABEL).set(mint_total)
+
+        for market_id in mint_total_per_market:
+            if market_id not in AVAILABLE_MARKETS:
+                continue
+            market_total_mint = mint_total_per_market[market_id] / mint_divisor
+            metrics['mint_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[market_id]).set(market_total_mint)
 
         timestamp_start = datetime.datetime.now().timestamp()
         time.sleep(query_interval)

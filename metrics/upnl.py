@@ -87,6 +87,7 @@ def set_metrics_to_nan():
 
 async def query_upnl():
     print('[upnl] Starting query...')
+    set_metrics_to_nan()
     try:
         iteration = 1
         query_interval = 10 # in seconds
