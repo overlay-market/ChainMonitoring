@@ -181,7 +181,7 @@ class TestMintMetric(unittest.TestCase):
         print('next_timestamp_lower', next_timestamp_lower)
         print('next_timestamp_upper', next_timestamp_upper)
         self.assertEqual(1693633260, next_timestamp_lower)
-        self.assertEqual(timestamp_start, next_timestamp_upper)
+        self.assertEqual(timestamp_start_1, next_timestamp_upper)
         after =  REGISTRY.get_sample_value(
             'ovl_token_minted',
             labels={'market': ALL_MARKET_LABEL}
