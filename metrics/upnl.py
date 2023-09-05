@@ -9,7 +9,11 @@ from brownie import Contract, web3, network
 from dank_mids.brownie_patch import patch_contract
 from dank_mids.helpers import setup_dank_w3_from_sync
 
-from constants import MAP_MARKET_ID_TO_NAME as MARKET_MAP, AVAILABLE_MARKETS, ALL_MARKET_LABEL
+from constants import (
+    MAP_MARKET_ID_TO_NAME as MARKET_MAP,
+    AVAILABLE_MARKETS,
+    ALL_MARKET_LABEL
+)
 from prometheus_metrics import metrics
 from subgraph.client import ResourceClient as SubgraphClient
 

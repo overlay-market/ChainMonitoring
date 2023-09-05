@@ -63,6 +63,45 @@ class ResourceClient:
         
         return all_positions
 
+    def get_all_positions(self, page_size = PAGE_SIZE):
+        all_positions = []
+        query = f'''
+        {{
+            positions(first: {page_size}, orderBy: createdAtTimestamp, orderDirection: desc)  {{
+                id
+                createdAtTimestamp
+                mint
+                market {{
+                    id
+                }}
+            }}
+        }}
+        '''
+        response = requests.post(self.URL, json={'query': query})
+        curr_positions = response.json().get('data', {}).get('positions', [])
+        # print('response', response.json())
+        while len(curr_positions) > 0:
+            all_positions.extend(curr_positions)
+            query = f'''
+            {{
+                positions(
+                    where: {{ createdAtTimestamp_lt: { int(curr_positions[-1]['createdAtTimestamp']) } }}, 
+                    first: {page_size}, orderBy: createdAtTimestamp, orderDirection: desc)  {{
+                    id
+                    createdAtTimestamp
+                    mint
+                    market {{
+                        id
+                    }}
+                }}
+            }}
+            '''
+            response = requests.post(self.URL, json={'query': query})
+            curr_positions = response.json().get('data', {}).get('positions', [])
+
+        print('all_positions', len(all_positions))
+        return all_positions
+
     def get_mint_total_per_market(self, page_size = PAGE_SIZE):
         all_positions = []
         mint_total_per_market = {}
@@ -107,10 +146,10 @@ class ResourceClient:
             response = requests.post(self.URL, json={'query': query})
             curr_positions = response.json().get('data', {}).get('positions', [])
 
-        # print('all_positions', all_positions)
+        print('all_positions', len(all_positions))
         print('mint_total', mint_total)
         print('mint_total_per_market', mint_total_per_market)
-        return mint_total, mint_total_per_market
+        return all_positions, mint_total_per_market
 
     def get_builds(self, timestamp_lower, timestamp_upper, page_size=PAGE_SIZE):
         builds = []
