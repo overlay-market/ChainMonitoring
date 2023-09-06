@@ -68,6 +68,13 @@ This only runs the Python application. To emulate the complete monitoring functi
    python chain_monitoring.py
    ```
 
+### Tests
+Running the following command runs all tests in the tests/ directory.
+```
+pytest
+```
+
+
 ## Deployment
 ### Ubuntu Instance
 - to-do
