@@ -1,7 +1,14 @@
+import datetime
+import math
+import time
 import unittest
 from prometheus_client import REGISTRY
 from metrics.mint import query_single_time_window, initialize_metrics
-from constants import ALL_MARKET_LABEL, MINT_DIVISOR
+from constants import (
+    ALL_MARKET_LABEL,
+    MINT_DIVISOR,
+    QUERY_INTERVAL
+)
 
 
 INITIAL_POSITIONS = [
@@ -150,13 +157,14 @@ class TestMintMetric(unittest.TestCase):
         print('after', after)
         self.assertEqual(2.5, after - before)
 
-    def test_two_consecutive_iterations(self):
+    def test_two_iterations(self):
         initialize_metrics(INITIAL_POSITIONS)
-        before =  REGISTRY.get_sample_value(
+        initial =  REGISTRY.get_sample_value(
             'ovl_token_minted',
             labels={'market': ALL_MARKET_LABEL}
         )
 
+        # Start first iteration
         positions_1 = [
             {
                 "id": "0x02e5938904014901c96f534b063ec732ea3b48d5-0x02",
@@ -170,21 +178,52 @@ class TestMintMetric(unittest.TestCase):
         timestamp_start_1 = 1693633360
         timestamp_lower_1 = 1693633160
         timestamp_upper_1 = 1693633360
-
         next_timestamp_lower, next_timestamp_upper = query_single_time_window(
             positions=positions_1,
             timestamp_start=timestamp_start_1,
             timestamp_lower=timestamp_lower_1,
             timestamp_upper=timestamp_upper_1
         )
-
-        print('next_timestamp_lower', next_timestamp_lower)
-        print('next_timestamp_upper', next_timestamp_upper)
         self.assertEqual(1693633260, next_timestamp_lower)
         self.assertEqual(timestamp_start_1, next_timestamp_upper)
         after =  REGISTRY.get_sample_value(
             'ovl_token_minted',
             labels={'market': ALL_MARKET_LABEL}
         )
+        self.assertEqual(2.5, after - initial)
+        # End of first iteration
+
+        time.sleep(QUERY_INTERVAL)
+
+        # Second iteration
+        positions_2 = [
+            {
+                "id": "0x1067b7df86552a53d816ce3fed50d6d01310b48f-0x02",
+                "createdAtTimestamp": "1693633460",
+                "mint": 3.5 * MINT_DIVISOR,
+                "market": {
+                    "id": "0x1067b7df86552a53d816ce3fed50d6d01310b48f"
+                }
+            },
+        ]
+        timestamp_start_2 = math.ceil(datetime.datetime.now().timestamp())
+        timestamp_lower_2 = next_timestamp_lower
+        timestamp_upper_2 = next_timestamp_upper
+
+        next_timestamp_lower, next_timestamp_upper = query_single_time_window(
+            positions=positions_2,
+            timestamp_start=timestamp_start_2,
+            timestamp_lower=timestamp_lower_2,
+            timestamp_upper=timestamp_upper_2
+        )
+        print('next_timestamp_lower', next_timestamp_lower)
+        print('next_timestamp_upper', next_timestamp_upper)
+        self.assertEqual(1693633460, next_timestamp_lower)
+        self.assertEqual(timestamp_start_2, next_timestamp_upper)
+        after =  REGISTRY.get_sample_value(
+            'ovl_token_minted',
+            labels={'market': ALL_MARKET_LABEL}
+        )
         print('after', after)
-        self.assertEqual(2.5, after - before)
+        self.assertEqual(6.0, after - initial)
+        # End of second iteration
