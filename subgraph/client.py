@@ -22,7 +22,8 @@ def extract_live_positions(builds):
 
 
 class ResourceClient:
-    URL = 'https://api.studio.thegraph.com/proxy/49419/overlay-contracts/v0.0.8'
+    # URL = 'https://api.studio.thegraph.com/proxy/49419/overlay-contracts/v0.0.8'
+    URL = 'https://api.studio.thegraph.com/query/46086/overlay-v2-subgraph-arbitrum/version/latest'
     PAGE_SIZE = 500
 
     def get_positions(self, timestamp_lower, timestamp_upper, page_size=PAGE_SIZE):
