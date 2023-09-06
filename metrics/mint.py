@@ -34,6 +34,7 @@ def initialize_metrics(all_positions):
     if (not len(all_positions)):
         return
     all_positions_df = pd.DataFrame(all_positions)
+    all_positions_df['mint'] = all_positions_df['mint'].apply(int)
     all_positions_df[['market', 'position_id']] = all_positions_df['id'].str.split(
         '-', expand=True)
     all_positions_df.drop(
