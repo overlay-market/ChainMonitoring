@@ -97,7 +97,6 @@ def query_mint():
 
         # Calculate the total mint so far from the subgraph
         all_positions = subgraph_client.get_all_positions()
-        write_to_json(all_positions, 'all_positions.json')
         initialize_metrics(all_positions)
 
         timestamp_start = datetime.datetime.now().timestamp()
