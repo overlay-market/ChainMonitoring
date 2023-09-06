@@ -12,7 +12,9 @@ from dank_mids.helpers import setup_dank_w3_from_sync
 from constants import (
     MAP_MARKET_ID_TO_NAME as MARKET_MAP,
     AVAILABLE_MARKETS,
-    ALL_MARKET_LABEL
+    ALL_MARKET_LABEL,
+    QUERY_INTERVAL,
+    MINT_DIVISOR
 )
 from prometheus_metrics import metrics
 from subgraph.client import ResourceClient as SubgraphClient
@@ -89,47 +91,53 @@ def set_metrics_to_nan():
         metrics['upnl_pct_gauge'].labels(market=MARKET_MAP[market]).set(math.nan)
 
 
+async def set_metrics(live_positions):
+    if not len(live_positions):
+        set_metrics_to_nan()
+        return
+
+    # Calculate current value of each live position
+    live_positions_df = await process_live_positions(live_positions)
+
+    # Set initial value of upnl metric so far
+    upnl_total = live_positions_df['upnl'].sum()
+    upnl_total_per_market_df = live_positions_df.groupby(by='market')['upnl'].sum().reset_index()
+    upnl_total_per_market = dict(zip(upnl_total_per_market_df['market'], upnl_total_per_market_df['upnl']))
+    metrics['upnl_gauge'].labels(market=ALL_MARKET_LABEL).set(upnl_total)
+    for market_id in upnl_total_per_market:
+        metrics['upnl_gauge'].labels(market=MARKET_MAP[market_id]).set(upnl_total_per_market[market_id])
+    print('[upnl] upnl_total!!', upnl_total)
+    print('[upnl] upnl_total_per_market!!', upnl_total_per_market)
+
+    # Set initial value for collateral metric so far
+    collateral_total = live_positions_df['collateral_rem'].sum()
+    collateral_total_per_market_df = live_positions_df.groupby(by='market')['collateral_rem'].sum().reset_index()
+    collateral_total_per_market = dict(zip(collateral_total_per_market_df['market'], collateral_total_per_market_df['collateral_rem']))
+    print('[upnl] collateral_total!!', collateral_total)
+    print('[upnl] collateral_total_per_market', collateral_total_per_market)
+    metrics['collateral_rem_gauge'].labels(market=ALL_MARKET_LABEL).set(collateral_total)
+    for market_id in collateral_total_per_market:
+        metrics['collateral_rem_gauge'].labels(market=MARKET_MAP[market_id]).set(collateral_total_per_market[market_id])
+        metrics['upnl_pct_gauge'].labels(market=MARKET_MAP[market_id]).set(
+            upnl_total_per_market[market_id] / collateral_total_per_market[market_id]
+        )
+
+    # live_positions_df['upnl_pct'] = live_positions_df['upnl'] / live_positions_df['collateral_rem']
+    metrics['upnl_pct_gauge'].labels(market=ALL_MARKET_LABEL).set(upnl_total / collateral_total)
+
+
 async def query_upnl():
     print('[upnl] Starting query...')
     set_metrics_to_nan()
     try:
         iteration = 1
-        query_interval = 10 # in seconds
 
         # Fetch all live positions so far from the subgraph
         live_positions = subgraph_client.get_all_live_positions()
-
-        # Calculate current value of each live position
-        live_positions_df = await process_live_positions(live_positions)
-
-        # Set initial value of upnl metric so far
-        upnl_total = live_positions_df['upnl'].sum()
-        upnl_total_per_market_df = live_positions_df.groupby(by='market')['upnl'].sum().reset_index()
-        upnl_total_per_market = dict(zip(upnl_total_per_market_df['market'], upnl_total_per_market_df['upnl']))
-        metrics['upnl_gauge'].labels(market=ALL_MARKET_LABEL).set(upnl_total)
-        for market_id in upnl_total_per_market:
-            metrics['upnl_gauge'].labels(market=MARKET_MAP[market_id]).set(upnl_total_per_market[market_id])
-        print('[upnl] upnl_total!!', upnl_total)
-        print('[upnl] upnl_total_per_market!!', upnl_total_per_market)
-
-        # Set initial value for collateral metric so far
-        collateral_total = live_positions_df['collateral_rem'].sum()
-        collateral_total_per_market_df = live_positions_df.groupby(by='market')['collateral_rem'].sum().reset_index()
-        collateral_total_per_market = dict(zip(collateral_total_per_market_df['market'], collateral_total_per_market_df['collateral_rem']))
-        print('[upnl] collateral_total!!', collateral_total)
-        print('[upnl] collateral_total_per_market', collateral_total_per_market)
-        metrics['collateral_rem_gauge'].labels(market=ALL_MARKET_LABEL).set(collateral_total)
-        for market_id in collateral_total_per_market:
-            metrics['collateral_rem_gauge'].labels(market=MARKET_MAP[market_id]).set(collateral_total_per_market[market_id])
-            metrics['upnl_pct_gauge'].labels(market=MARKET_MAP[market_id]).set(
-                upnl_total_per_market[market_id] / collateral_total_per_market[market_id]
-            )
-
-        # live_positions_df['upnl_pct'] = live_positions_df['upnl'] / live_positions_df['collateral_rem']
-        metrics['upnl_pct_gauge'].labels(market=ALL_MARKET_LABEL).set(upnl_total / collateral_total)
+        await set_metrics(live_positions)
        
         timestamp_start = datetime.datetime.now().timestamp()
-        await asyncio.sleep(query_interval)
+        await asyncio.sleep(QUERY_INTERVAL)
         timestamp_lower = math.ceil(timestamp_start)
         timestamp_upper = math.ceil(datetime.datetime.now().timestamp())
 
@@ -141,37 +149,41 @@ async def query_upnl():
                 print('[upnl] timestamp_lower', datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S'))
                 print('[upnl] timestamp_upper', datetime.datetime.utcfromtimestamp(timestamp_upper).strftime('%Y-%m-%d %H:%M:%S'))
 
-                # Fetch new live positions
-                live_positions = subgraph_client.get_live_positions(timestamp_lower, timestamp_upper)
-                print(f'[upnl] live_positions', len(live_positions))
+                # Fetch all live positions so far from the subgraph
+                live_positions = subgraph_client.get_all_live_positions()
+                await set_metrics(live_positions)
 
-                # Calculate current value of each live position
-                if len(live_positions) > 0:
-                    live_positions_df = await process_live_positions(live_positions)
-                    for position in live_positions_df.to_dict(orient='records'):
-                        market = MARKET_MAP[position['market']]
-                        metrics['upnl_gauge'].labels(market=market).inc(position['upnl'])
-                        metrics['upnl_gauge'].labels(market=ALL_MARKET_LABEL).inc(position['upnl'])
+                # # Fetch new live positions
+                # live_positions = subgraph_client.get_live_positions(timestamp_lower, timestamp_upper)
+                # print(f'[upnl] live_positions', len(live_positions))
 
-                        metrics['collateral_rem_gauge'].labels(market=market).inc(position['collateral_rem'])
-                        metrics['collateral_rem_gauge'].labels(market=ALL_MARKET_LABEL).inc(position['collateral_rem'])
+                # # Calculate current value of each live position
+                # if len(live_positions) > 0:
+                #     live_positions_df = await process_live_positions(live_positions)
+                #     for position in live_positions_df.to_dict(orient='records'):
+                #         market = MARKET_MAP[position['market']]
+                #         metrics['upnl_gauge'].labels(market=market).inc(position['upnl'])
+                #         metrics['upnl_gauge'].labels(market=ALL_MARKET_LABEL).inc(position['upnl'])
+
+                #         metrics['collateral_rem_gauge'].labels(market=market).inc(position['collateral_rem'])
+                #         metrics['collateral_rem_gauge'].labels(market=ALL_MARKET_LABEL).inc(position['collateral_rem'])
                         
-                        # live_positions_df['upnl_pct'] = live_positions_df['upnl'] / live_positions_df['collateral_rem']
-                        # ._value.get()
-                        metrics['upnl_pct_gauge'].labels(market=market).set(
-                            metrics['upnl_gauge'].labels(market=market)._value.get()
-                            / metrics['collateral_rem_gauge'].labels(market=market)._value.get()
-                        )
-                        metrics['upnl_pct_gauge'].labels(market=ALL_MARKET_LABEL).set(
-                            metrics['upnl_gauge'].labels(market=ALL_MARKET_LABEL)._value.get()
-                            / metrics['collateral_rem_gauge'].labels(market=ALL_MARKET_LABEL)._value.get()
-                        )
+                #         # live_positions_df['upnl_pct'] = live_positions_df['upnl'] / live_positions_df['collateral_rem']
+                #         # ._value.get()
+                #         metrics['upnl_pct_gauge'].labels(market=market).set(
+                #             metrics['upnl_gauge'].labels(market=market)._value.get()
+                #             / metrics['collateral_rem_gauge'].labels(market=market)._value.get()
+                #         )
+                #         metrics['upnl_pct_gauge'].labels(market=ALL_MARKET_LABEL).set(
+                #             metrics['upnl_gauge'].labels(market=ALL_MARKET_LABEL)._value.get()
+                #             / metrics['collateral_rem_gauge'].labels(market=ALL_MARKET_LABEL)._value.get()
+                #         )
 
                 # Increment iteration
                 iteration += 1
 
                 # Wait for the next iteration
-                await asyncio.sleep(query_interval)
+                await asyncio.sleep(QUERY_INTERVAL)
 
                 if len(live_positions) > 0:
                     # set timestamp range lower bound to timestamp of latest event
