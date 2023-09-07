@@ -136,70 +136,29 @@ async def query_upnl():
         live_positions = subgraph_client.get_all_live_positions()
         await set_metrics(live_positions)
        
-        timestamp_start = datetime.datetime.now().timestamp()
         await asyncio.sleep(QUERY_INTERVAL)
-        timestamp_lower = math.ceil(timestamp_start)
-        timestamp_upper = math.ceil(datetime.datetime.now().timestamp())
 
         while True:
             try:
                 print('===================================')
                 print(f'[upnl] Running iteration #{iteration}...')
                 timestamp_start = math.ceil(datetime.datetime.now().timestamp())
-                print('[upnl] timestamp_lower', datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S'))
-                print('[upnl] timestamp_upper', datetime.datetime.utcfromtimestamp(timestamp_upper).strftime('%Y-%m-%d %H:%M:%S'))
+                print('[upnl] timestamp_start', datetime.datetime.utcfromtimestamp(timestamp_start).strftime('%Y-%m-%d %H:%M:%S'))
 
                 # Fetch all live positions so far from the subgraph
                 live_positions = subgraph_client.get_all_live_positions()
                 await set_metrics(live_positions)
-
-                # # Fetch new live positions
-                # live_positions = subgraph_client.get_live_positions(timestamp_lower, timestamp_upper)
-                # print(f'[upnl] live_positions', len(live_positions))
-
-                # # Calculate current value of each live position
-                # if len(live_positions) > 0:
-                #     live_positions_df = await process_live_positions(live_positions)
-                #     for position in live_positions_df.to_dict(orient='records'):
-                #         market = MARKET_MAP[position['market']]
-                #         metrics['upnl_gauge'].labels(market=market).inc(position['upnl'])
-                #         metrics['upnl_gauge'].labels(market=ALL_MARKET_LABEL).inc(position['upnl'])
-
-                #         metrics['collateral_rem_gauge'].labels(market=market).inc(position['collateral_rem'])
-                #         metrics['collateral_rem_gauge'].labels(market=ALL_MARKET_LABEL).inc(position['collateral_rem'])
-                        
-                #         # live_positions_df['upnl_pct'] = live_positions_df['upnl'] / live_positions_df['collateral_rem']
-                #         # ._value.get()
-                #         metrics['upnl_pct_gauge'].labels(market=market).set(
-                #             metrics['upnl_gauge'].labels(market=market)._value.get()
-                #             / metrics['collateral_rem_gauge'].labels(market=market)._value.get()
-                #         )
-                #         metrics['upnl_pct_gauge'].labels(market=ALL_MARKET_LABEL).set(
-                #             metrics['upnl_gauge'].labels(market=ALL_MARKET_LABEL)._value.get()
-                #             / metrics['collateral_rem_gauge'].labels(market=ALL_MARKET_LABEL)._value.get()
-                #         )
 
                 # Increment iteration
                 iteration += 1
 
                 # Wait for the next iteration
                 await asyncio.sleep(QUERY_INTERVAL)
-
-                if len(live_positions) > 0:
-                    # set timestamp range lower bound to timestamp of latest event
-                    timestamp_lower = int(live_positions[0]['timestamp'])
-                    if len(live_positions) > 1:
-                        timestamp_upper = int(live_positions[-1]['timestamp'])
-                    else:
-                        timestamp_upper = timestamp_start
-                else:
-                    timestamp_lower = timestamp_upper
-                    timestamp_upper = timestamp_start
             except Exception as e:
                 print(
                     f"[upnl] An error occurred on iteration "
-                    f"{iteration} timestamp_lower "
-                    f"{datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S')}:", e)
+                    f"{iteration} timestamp_start "
+                    f"{datetime.datetime.utcfromtimestamp(timestamp_start).strftime('%Y-%m-%d %H:%M:%S')}:", e)
     except Exception as e:
         print(f"[upnl] An error occurred:", e)
         set_metrics_to_nan()
