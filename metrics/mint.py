@@ -54,6 +54,10 @@ def initialize_metrics(all_positions):
             market_total_mint)
 
 
+def is_divisible(number, divisor):
+    return number % divisor == 0
+
+
 def query_single_time_window(
         positions,
         timestamp_start,
@@ -69,8 +73,6 @@ def query_single_time_window(
         if position['market']['id'] in AVAILABLE_MARKETS
     ]
     print(f'[ovl_token_minted] positions', len(positions))
-    # metrics['mint_gauge'].labels(market='LINK / USD').inc(500)
-    # metrics['mint_gauge'].labels(market='SOL / USD').inc(-500)
     for position in positions:
         mint = int(position['mint']) / MINT_DIVISOR
         market = MAP_MARKET_ID_TO_NAME[position['market']['id']]
@@ -118,6 +120,13 @@ def query_mint():
                     '[ovl_token_minted] timestamp_upper',
                     datetime.datetime.utcfromtimestamp(timestamp_upper).strftime('%Y-%m-%d %H:%M:%S')
                 )
+
+                # Test market that overmints every 200th iteration
+                if is_divisible(iteration, 200):
+                    metrics['mint_gauge'].labels(market='TEST OVERMINT').inc(20)
+                if is_divisible(iteration, 30):
+                    metrics['mint_gauge'].labels(market='TEST OVERMINT').inc(0.02)
+
                 # Update ovl_token_minted metric
                 positions = subgraph_client.get_positions(timestamp_lower, timestamp_upper)
                 positions = [
