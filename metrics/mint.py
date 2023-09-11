@@ -122,10 +122,10 @@ def query_mint():
                 )
 
                 # Test market that overmints every 200th iteration
-                if is_divisible(iteration, 200):
-                    metrics['mint_gauge'].labels(market='TEST OVERMINT').inc(20)
-                if is_divisible(iteration, 30):
-                    metrics['mint_gauge'].labels(market='TEST OVERMINT').inc(0.02)
+                # if is_divisible(iteration, 200):
+                #     metrics['mint_gauge'].labels(market='TEST OVERMINT').inc(20)
+                # if is_divisible(iteration, 30):
+                #     metrics['mint_gauge'].labels(market='TEST OVERMINT').inc(0.02)
 
                 # Update ovl_token_minted metric
                 positions = subgraph_client.get_positions(timestamp_lower, timestamp_upper)
