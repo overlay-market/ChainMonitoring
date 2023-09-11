@@ -16,6 +16,9 @@ services:
     image: chain-monitoring
     ports:
       - "81:8000"
+    env_file: .env
+    environment:
+      SUBGRAPH_API_KEY: ${SUBGRAPH_API_KEY}
   grafana:
     image: grafana/grafana
     ports:

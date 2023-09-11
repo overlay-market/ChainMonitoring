@@ -1,3 +1,5 @@
+import os
+
 MAP_MARKET_ID_TO_NAME = {
     "0x02e5938904014901c96f534b063ec732ea3b48d5": "LINK / USD",
     "0x1067b7df86552a53d816ce3fed50d6d01310b48f": "SOL / USD",
@@ -41,3 +43,5 @@ ALL_MARKET_LABEL = 'ALL'
 
 QUERY_INTERVAL = 10 # in seconds
 MINT_DIVISOR = 10 ** 18
+
+SUBGRAPH_API_KEY = os.environ.get("SUBGRAPH_API_KEY")

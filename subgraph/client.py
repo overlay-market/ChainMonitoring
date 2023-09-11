@@ -1,6 +1,7 @@
 import pandas as pd
 import requests
 
+from constants import SUBGRAPH_API_KEY
 
 def extract_live_positions(builds):
     builds_df = pd.json_normalize(builds)
@@ -23,7 +24,9 @@ def extract_live_positions(builds):
 
 class ResourceClient:
     # URL = 'https://api.studio.thegraph.com/proxy/49419/overlay-contracts/v0.0.8'
-    URL = 'https://api.studio.thegraph.com/query/46086/overlay-v2-subgraph-arbitrum/version/latest'
+    # URL = 'https://api.studio.thegraph.com/query/46086/overlay-v2-subgraph-arbitrum/version/latest'
+    # URL = 'https://api.studio.thegraph.com/query/50057/overlay-arbitrum/v1.0.1'
+    URL = f'https://gateway-arbitrum.network.thegraph.com/api/{SUBGRAPH_API_KEY}/subgraphs/id/7RuVCeRzAHL5apu6SWHyUEVt3Ko2pUv2wMTiHQJaiUW9'
     PAGE_SIZE = 500
 
     def get_positions(self, timestamp_lower, timestamp_upper, page_size=PAGE_SIZE):
