@@ -265,8 +265,10 @@ class ResourceClient:
         response = requests.post(self.URL, json={'query': query})
         curr_builds = response.json().get('data', {}).get('builds', [])
         curr_live_positions = extract_live_positions(curr_builds)
-
+        page_count = 0
         while True:
+            page_count += 1
+            print(f'Fetching builds page # {page_count}')
             live_positions.extend(curr_live_positions)
             query = f'''
             {{

@@ -1,4 +1,5 @@
 import datetime
+import json
 import math
 import threading
 
@@ -20,15 +21,20 @@ from prometheus_metrics import metrics
 from subgraph.client import ResourceClient as SubgraphClient
 
 
-network.connect('arbitrum-main')
-
-# Dank mids setup
-dank_w3 = setup_dank_w3_from_sync(web3)
-
 # Contract addresses
 STATE = '0xC3cB99652111e7828f38544E3e94c714D8F9a51a'
 
-subgraph_client = SubgraphClient()
+# network.connect('arbitrum-main')
+
+# # Dank mids setup
+# dank_w3 = setup_dank_w3_from_sync(web3)
+
+# subgraph_client = SubgraphClient()
+
+
+def write_to_json(data, filename):
+    with open(filename, 'w') as json_file:
+        json.dump({"data": data}, json_file, indent=4)
 
 
 def load_contract(address):
@@ -38,6 +44,7 @@ def load_contract(address):
     except ValueError:
         # Loads from explorer first time script is run
         contract = Contract.from_explorer(address)
+    dank_w3 = setup_dank_w3_from_sync(web3)
     dank_contract = patch_contract(contract, dank_w3)
     return dank_contract
 
@@ -50,12 +57,7 @@ async def get_pos_value(state, pos):
         return
 
 
-async def process_live_positions(live_positions):
-    live_positions_df = pd.DataFrame(live_positions)
-    live_positions_df.drop(
-        live_positions_df[~live_positions_df['market'].isin(AVAILABLE_MARKETS)].index,
-        inplace = True
-    )
+async def get_current_value_of_live_positions(live_positions_df):
     state = load_contract(STATE)
     pos_list = live_positions_df[['market', 'owner.id', 'position_id']].values.tolist()
     values = []
@@ -72,8 +74,17 @@ async def process_live_positions(live_positions):
             await asyncio.gather(*[get_pos_value(state, pos) for pos in curr_post_list])
         )
         await asyncio.sleep(5)
+    return values
 
-    values = [v/1e18 for v in values]
+
+async def process_live_positions(live_positions):
+    live_positions_df = pd.DataFrame(live_positions)
+    live_positions_df.drop(
+        live_positions_df[~live_positions_df['market'].isin(AVAILABLE_MARKETS)].index,
+        inplace = True
+    )
+    values = await get_current_value_of_live_positions(live_positions_df)
+    values = [v / MINT_DIVISOR for v in values]
     live_positions_df['value'] = values
     live_positions_df['upnl'] = live_positions_df['value'] - live_positions_df['collateral_rem']
     live_positions_df['upnl_pct'] = live_positions_df['upnl'] / live_positions_df['collateral_rem']
@@ -91,13 +102,13 @@ def set_metrics_to_nan():
         metrics['upnl_pct_gauge'].labels(market=MARKET_MAP[market]).set(math.nan)
 
 
-async def set_metrics(live_positions):
-    if not len(live_positions):
+def set_metrics(live_positions_df_with_curr_values):
+    if not len(live_positions_df_with_curr_values):
         set_metrics_to_nan()
         return
 
     # Calculate current value of each live position
-    live_positions_df = await process_live_positions(live_positions)
+    live_positions_df = live_positions_df_with_curr_values
 
     # Set initial value of upnl metric so far
     upnl_total = live_positions_df['upnl'].sum()
@@ -128,14 +139,25 @@ async def set_metrics(live_positions):
 
 async def query_upnl():
     print('[upnl] Starting query...')
+
+    print('[upnl] Connecting to arbitrum network...')
+    network.connect('arbitrum-main')
+
+    subgraph_client = SubgraphClient()
     set_metrics_to_nan()
     try:
         iteration = 1
 
         # Fetch all live positions so far from the subgraph
+        print('[upnl] Getting live positions from subgraph...')
         live_positions = subgraph_client.get_all_live_positions()
-        await set_metrics(live_positions)
-       
+        # write_to_json(live_positions, 'live_positions.json')
+        print('[upnl] Getting live positions current value from blockchain...')
+        live_positions_df_with_curr_values = await process_live_positions(live_positions)
+        # write_to_json(live_positions_df_with_curr_values.to_dict(orient="records"), 'live_positions_with_current_values.json')
+        print('[upnl] Calculating upnl metrics...')
+        set_metrics(live_positions_df_with_curr_values)
+
         await asyncio.sleep(QUERY_INTERVAL)
 
         while True:
@@ -147,7 +169,8 @@ async def query_upnl():
 
                 # Fetch all live positions so far from the subgraph
                 live_positions = subgraph_client.get_all_live_positions()
-                await set_metrics(live_positions)
+                live_positions_df_with_curr_values = await process_live_positions(live_positions)
+                set_metrics(live_positions_df_with_curr_values)
 
                 # Increment iteration
                 iteration += 1
