@@ -1,7 +1,34 @@
 import pandas as pd
 import requests
+from pydantic import BaseModel, ValidationError
+from typing import Optional, List
 
 from constants import SUBGRAPH_API_KEY
+
+
+class Account(BaseModel):
+    id: str
+
+
+class Market(BaseModel):
+    id: str
+
+
+class Position(BaseModel):
+    id: int
+    createdAtTimestamp: str
+    mint: str
+    market: Market
+
+
+class Build(BaseModel):
+    id: str
+    timestamp: str
+    collateral: str
+    position: Position
+    owner: Account
+
+
 
 def extract_live_positions(builds):
     builds_df = pd.json_normalize(builds)
