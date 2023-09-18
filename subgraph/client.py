@@ -1,7 +1,8 @@
+import json
 import pandas as pd
 import requests
 from pydantic import BaseModel, ValidationError
-from typing import Optional, List
+from typing import List, Dict
 
 from constants import SUBGRAPH_API_KEY
 
@@ -15,7 +16,7 @@ class Market(BaseModel):
 
 
 class Position(BaseModel):
-    id: int
+    id: str
     createdAtTimestamp: str
     mint: str
     market: Market
@@ -28,6 +29,11 @@ class Build(BaseModel):
     position: Position
     owner: Account
 
+
+MODEL_MAP = {
+    'positions': Position,
+    'builds': Build,
+}
 
 
 def extract_live_positions(builds):
@@ -56,79 +62,142 @@ class ResourceClient:
     URL = f'https://gateway-arbitrum.network.thegraph.com/api/{SUBGRAPH_API_KEY}/subgraphs/id/7RuVCeRzAHL5apu6SWHyUEVt3Ko2pUv2wMTiHQJaiUW9'
     PAGE_SIZE = 500
 
-    def get_positions(self, timestamp_lower, timestamp_upper, page_size=PAGE_SIZE):
-        all_positions = []
+    def _validate_response(self, response, list_key):
+        response_json = response.json()
+        errors = response_json.get('errors')
+        data = response_json.get('data')
+        if errors:
+            raise Exception('Got errors from subgraph api response:', errors)
+        if not data:
+            raise Exception('Subgraph API returned empty data')
+        model = MODEL_MAP[list_key]
+        record_list = data.get(list_key)
+        try:
+            for item in record_list:
+                model(**item)
+        except ValidationError as e:
+            print('ValidationError', e)
+            raise e
+        return record_list
+    
+    def _build_query(
+        self,
+        list_key: str,
+        where: Dict,
+        filters: Dict,
+        includes: List[str],
+        nested_includes: Dict
+    ):
+        # where = {
+        #     'createdAtTimestamp_gt': '123',
+        # }
+        where_string = json.dumps(where).replace('"', '')
+
+        # filters = {
+        #     'first': 100,
+        #     'orderDirection': 'desc',
+        # }
+        filters_string = json.dumps(filters).replace('"', '').replace('{', '').replace('}', '')
+
+        # includes = ['id', 'mint']
+        includes_string = '\n'.join(includes)
+
+        # nested_includes = {
+        #     'market': ['id']
+        # }
+        nested_includes_string = ''
+        for key, value in nested_includes.items():
+            attrs_string = '\n'.join(value)
+            nested_includes_string += f'''
+                {key} {{
+                    {attrs_string}
+                }}
+            '''
+
         query = f'''
         {{
-            positions(where: {{ createdAtTimestamp_gt: { timestamp_lower }, createdAtTimestamp_lt: { timestamp_upper } }}, first: {page_size}, orderBy: createdAtTimestamp, orderDirection: desc)  {{
-                id
-                createdAtTimestamp
-                mint
-                market {{
-                    id
-                }}
+            {list_key}(where: {where_string}, {filters_string}) {{
+                {includes_string}
+                {nested_includes_string}
             }}
         }}
         '''
+        return query
+
+    def get_positions(self, timestamp_lower, timestamp_upper, page_size=PAGE_SIZE):
+        all_positions = []
+        query = self._build_query(
+            'positions',
+            where={ 
+                'createdAtTimestamp_gt': timestamp_lower,
+                'createdAtTimestamp_lt': timestamp_upper
+            },
+            filters={
+                'first': page_size,
+                'orderBy': 'createdAtTimestamp',
+                'orderDirection': 'desc'
+            },
+            includes=['id', 'createdAtTimestamp', 'mint'],
+            nested_includes={ 'market': ['id'] }
+        )
         response = requests.post(self.URL, json={'query': query})
-        curr_positions = response.json().get('data', {}).get('positions', [])
+        curr_positions = self._validate_response(response, 'positions')
         page_count = 0
         while len(curr_positions) > 0:
             page_count += 1
             print(f'Fetching positions page # {page_count}')
             all_positions.extend(curr_positions)
-            query = f'''
-            {{
-                positions(where: {{ createdAtTimestamp_gt: {timestamp_lower}, createdAtTimestamp_lt: { int(curr_positions[-1]['createdAtTimestamp']) } }}, first: {page_size}, orderBy: createdAtTimestamp, orderDirection: desc)  {{
-                    id
-                    createdAtTimestamp
-                    mint
-                    market {{
-                        id
-                    }}
-                }}
-            }}
-            '''
+            query = self._build_query(
+                'positions',
+                where={ 
+                    'createdAtTimestamp_gt': timestamp_lower,
+                    'createdAtTimestamp_lt': int(curr_positions[-1]['createdAtTimestamp'])
+                },
+                filters={
+                    'first': page_size,
+                    'orderBy': 'createdAtTimestamp',
+                    'orderDirection': 'desc'
+                },
+                includes=['id', 'createdAtTimestamp', 'mint'],
+                nested_includes={ 'market': ['id'] }
+            )
             response = requests.post(self.URL, json={'query': query})
-            curr_positions = response.json().get('data', {}).get('positions', [])
+            curr_positions = self._validate_response(response, 'positions')
         
         return all_positions
 
     def get_all_positions(self, page_size = PAGE_SIZE):
         all_positions = []
-        query = f'''
-        {{
-            positions(first: {page_size}, orderBy: createdAtTimestamp, orderDirection: desc)  {{
-                id
-                createdAtTimestamp
-                mint
-                market {{
-                    id
-                }}
-            }}
-        }}
-        '''
+        query = self._build_query(
+            'positions',
+            where={},
+            filters={
+                'first': page_size,
+                'orderBy': 'createdAtTimestamp',
+                'orderDirection': 'desc'
+            },
+            includes=['id', 'createdAtTimestamp', 'mint'],
+            nested_includes={ 'market': ['id'] }
+        )
         response = requests.post(self.URL, json={'query': query})
-        curr_positions = response.json().get('data', {}).get('positions', [])
-        # print('response', response.json())
+        curr_positions = self._validate_response(response, 'positions')
         while len(curr_positions) > 0:
             all_positions.extend(curr_positions)
-            query = f'''
-            {{
-                positions(
-                    where: {{ createdAtTimestamp_lt: { int(curr_positions[-1]['createdAtTimestamp']) } }}, 
-                    first: {page_size}, orderBy: createdAtTimestamp, orderDirection: desc)  {{
-                    id
-                    createdAtTimestamp
-                    mint
-                    market {{
-                        id
-                    }}
-                }}
-            }}
-            '''
+            query = self._build_query(
+                'positions',
+                where={
+                    'createdAtTimestamp_lt': int(curr_positions[-1]['createdAtTimestamp'])
+                },
+                filters={
+                    'first': page_size,
+                    'orderBy': 'createdAtTimestamp',
+                    'orderDirection': 'desc'
+                },
+                includes=['id', 'createdAtTimestamp', 'mint'],
+                nested_includes={ 'market': ['id'] }
+            )
             response = requests.post(self.URL, json={'query': query})
-            curr_positions = response.json().get('data', {}).get('positions', [])
+            curr_positions = self._validate_response(response, 'positions')
 
         print('all_positions', len(all_positions))
         return all_positions
