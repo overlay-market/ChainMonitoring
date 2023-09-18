@@ -146,6 +146,7 @@ def query_mint():
                     f"[ovl_token_minted] An error occurred on iteration "
                     f"{iteration} timestamp_lower "
                     f"{datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S')}:", e)
+                set_metrics_to_nan()
             finally:
                 # Increment iteration
                 iteration += 1
