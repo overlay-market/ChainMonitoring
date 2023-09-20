@@ -137,7 +137,7 @@ class ResourceClient:
             includes=['id', 'createdAtTimestamp', 'mint'],
             nested_includes={ 'market': ['id'] }
         )
-        print('positions query!!', query)
+        # print('positions query!!', query)
         return query
 
     def get_positions(self, timestamp_lower, timestamp_upper, page_size=PAGE_SIZE):
