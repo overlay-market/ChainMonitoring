@@ -27,10 +27,10 @@ def set_metrics_to_nan():
     This is typically used to indicate that there was an issue with the query or data retrieval.
 
     Note:
-        - `metrics` is assumed to be a global object representing a metrics collector.
-        - `AVAILABLE_MARKETS` is assumed to be a global variable.
-        - `MAP_MARKET_ID_TO_NAME` is assumed to be a global variable.
-        - `ALL_MARKET_LABEL` is assumed to be a global variable.
+        - `metrics` is a global object representing a metrics collector.
+        - `AVAILABLE_MARKETS` is a global variable.
+        - `MAP_MARKET_ID_TO_NAME` is a global variable.
+        - `ALL_MARKET_LABEL` is a global variable.
 
     Returns:
         None
@@ -54,9 +54,9 @@ def initialize_metrics(all_positions):
 
     Note:
         - If `all_positions` is empty, the function does nothing.
-        - `AVAILABLE_MARKETS` is assumed to be a global variable.
-        - `MAP_MARKET_ID_TO_NAME` is assumed to be a global variable.
-        - `metrics` is assumed to be a global object representing a metrics collector.
+        - `AVAILABLE_MARKETS` is a global variable.
+        - `MAP_MARKET_ID_TO_NAME` is a global variable.
+        - `metrics` is a global object representing a metrics collector.
 
     This function processes the provided positions and calculates various metrics based on them.
     It updates the metrics collector with relevant information.
@@ -100,6 +100,30 @@ def query_single_time_window(
         positions,
         timestamp_lower
     ):
+    """
+    Query a single time window for position data and update metrics.
+
+    Args:
+        positions (list): List of position data, where each element is a dictionary
+            containing information about a position.
+        timestamp_lower (int): The lower bound of the timestamp range for the next query.
+
+    Returns:
+        tuple: A tuple containing the updated timestamp_lower and timestamp_upper.
+
+    This function processes position data for a specified time window and updates metrics accordingly.
+
+    It performs the following steps:
+        1. Increments the 'mint_gauge' metrics labels for each market and the overall market based on position data.
+        2. Sets the timestamp range for the next query based on the latest position's timestamp or the current time.
+
+    Note:
+        - `metrics` is a global object representing a metrics collector.
+        - `MAP_MARKET_ID_TO_NAME` is a global variable.
+        - `MINT_DIVISOR` is a global variable.
+        - `ALL_MARKET_LABEL` is a global variable.
+
+    """
     for position in positions:
         mint = int(position['mint']) / MINT_DIVISOR
         market = MAP_MARKET_ID_TO_NAME[position['market']['id']]
