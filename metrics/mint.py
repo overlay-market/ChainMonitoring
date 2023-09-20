@@ -24,6 +24,21 @@ def write_to_json(data, filename):
 
 
 def set_metrics_to_nan():
+    """
+    Set metrics values to NaN to indicate a query error.
+
+    This function updates the 'mint_gauge' metrics labels for all markets, setting their values to NaN.
+    This is typically used to indicate that there was an issue with the query or data retrieval.
+
+    Note:
+        - `metrics` is assumed to be a global object representing a metrics collector.
+        - `AVAILABLE_MARKETS` is assumed to be a global variable.
+        - `MAP_MARKET_ID_TO_NAME` is assumed to be a global variable.
+        - `ALL_MARKET_LABEL` is assumed to be a global variable.
+
+    Returns:
+        None
+    """
     # Set metric to NaN to indicate that something went wrong with the query
     metrics['mint_gauge'].labels(market=ALL_MARKET_LABEL).set(math.nan)
     for market in AVAILABLE_MARKETS:
@@ -31,6 +46,32 @@ def set_metrics_to_nan():
 
 
 def initialize_metrics(all_positions):
+    """
+    Initialize metrics based on the provided positions.
+
+    Args:
+        all_positions (list): List of position data, where each element is a dictionary
+            containing information about a position.
+
+    Returns:
+        None: This function modifies metrics directly.
+
+    Note:
+        - If `all_positions` is empty, the function does nothing.
+        - `AVAILABLE_MARKETS` is assumed to be a global variable.
+        - `MAP_MARKET_ID_TO_NAME` is assumed to be a global variable.
+        - `metrics` is assumed to be a global object representing a metrics collector.
+
+    This function processes the provided positions and calculates various metrics based on them.
+    It updates the metrics collector with relevant information.
+
+    The steps include:
+        1. Convert `all_positions` into a pandas DataFrame.
+        2. Extract necessary information from the DataFrame.
+        3. Filter out positions based on available markets.
+        4. Calculate total mint and mint per market.
+        5. Update the metrics collector with the calculated values.
+    """
     if (not len(all_positions)):
         return
     all_positions_df = pd.DataFrame(all_positions)
@@ -43,7 +84,8 @@ def initialize_metrics(all_positions):
     )
     mint_total = all_positions_df['mint'].sum() / MINT_DIVISOR
     mint_total_per_market_df = all_positions_df.groupby(by='market')['mint'].sum().reset_index()
-    mint_total_per_market = dict(zip(mint_total_per_market_df['market'], mint_total_per_market_df['mint']))
+    mint_total_per_market = dict(
+        zip(mint_total_per_market_df['market'], mint_total_per_market_df['mint']))
 
     metrics['mint_gauge'].labels(market=ALL_MARKET_LABEL).set(mint_total)
     for market_id in mint_total_per_market:
