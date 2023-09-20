@@ -1,4 +1,3 @@
-import json
 import datetime
 import math
 import pandas as pd
@@ -12,15 +11,12 @@ from constants import (
     QUERY_INTERVAL,
     MINT_DIVISOR
 )
+from utils import format_datetime
 from prometheus_metrics import metrics
 from subgraph.client import ResourceClient as SubgraphClient
 
 
 subgraph_client = SubgraphClient()
-
-def write_to_json(data, filename):
-    with open(filename, 'w') as json_file:
-        json.dump({"data": data}, json_file, indent=4)
 
 
 def set_metrics_to_nan():
@@ -102,19 +98,8 @@ def is_divisible(number, divisor):
 
 def query_single_time_window(
         positions,
-        timestamp_start,
-        timestamp_lower,
-        timestamp_upper
+        timestamp_lower
     ):
-    print('timestamp_start', timestamp_start)
-    print('timestamp_lower', timestamp_lower)
-    print('timestamp_upper', timestamp_upper)
-    positions = [
-        position
-        for position in positions
-        if position['market']['id'] in AVAILABLE_MARKETS
-    ]
-    print(f'[ovl_token_minted] positions', len(positions))
     for position in positions:
         mint = int(position['mint']) / MINT_DIVISOR
         market = MAP_MARKET_ID_TO_NAME[position['market']['id']]
@@ -122,15 +107,13 @@ def query_single_time_window(
         metrics['mint_gauge'].labels(market=ALL_MARKET_LABEL).inc(mint)
 
     if positions:
-        # set timestamp range lower bound to timestamp of latest event
+        # set next timestamp lower to timestamp of latest position
         next_timestamp_lower = int(positions[0]['createdAtTimestamp'])
-        if len(positions) > 1:
-            next_timestamp_upper = int(positions[-1]['createdAtTimestamp'])
-        else:
-            next_timestamp_upper = timestamp_start
     else:
+        # If there are no new positions in the time window,
+        # Keep the current timestamp lower
         next_timestamp_lower = timestamp_lower
-        next_timestamp_upper = timestamp_start
+    next_timestamp_upper = math.ceil(datetime.datetime.now().timestamp())
     return next_timestamp_lower, next_timestamp_upper
 
 
@@ -143,24 +126,22 @@ def query_mint():
         # Calculate the total mint so far from the subgraph
         all_positions = subgraph_client.get_all_positions()
         initialize_metrics(all_positions)
-
-        timestamp_start = datetime.datetime.now().timestamp()
         time.sleep(QUERY_INTERVAL)
-        timestamp_lower = math.ceil(timestamp_start)
+
+        timestamp_lower = int(all_positions[0]['createdAtTimestamp'])
         timestamp_upper = math.ceil(datetime.datetime.now().timestamp())
 
         while True:
             try:
                 print('===================================')
                 print(f'[ovl_token_minted] Running iteration #{iteration}...')
-                timestamp_start = math.ceil(datetime.datetime.now().timestamp())
                 print(
                     '[ovl_token_minted] timestamp_lower',
-                    datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S')
+                    format_datetime(timestamp_lower)
                 )
                 print(
                     '[ovl_token_minted] timestamp_upper',
-                    datetime.datetime.utcfromtimestamp(timestamp_upper).strftime('%Y-%m-%d %H:%M:%S')
+                    format_datetime(timestamp_upper)
                 )
 
                 # Test market that overmints every 200th iteration
@@ -170,24 +151,21 @@ def query_mint():
                 #     metrics['mint_gauge'].labels(market='TEST OVERMINT').inc(0.02)
 
                 # Update ovl_token_minted metric
-                positions = subgraph_client.get_positions(timestamp_lower, timestamp_upper)
+                positions = subgraph_client.get_positions(
+                    timestamp_lower, timestamp_upper)
                 positions = [
                     position
                     for position in positions
                     if position['market']['id'] in AVAILABLE_MARKETS
                 ]
-                print(f'[ovl_token_minted] positions', len(positions))
+                print(f'[ovl_token_minted] new positions', len(positions))
                 timestamp_lower, timestamp_upper = query_single_time_window(
-                    positions,
-                    timestamp_start,
-                    timestamp_lower,
-                    timestamp_upper
-                )
+                    positions, timestamp_lower)
             except Exception as e:
                 print(
                     f"[ovl_token_minted] An error occurred on iteration "
                     f"{iteration} timestamp_lower "
-                    f"{datetime.datetime.utcfromtimestamp(timestamp_lower).strftime('%Y-%m-%d %H:%M:%S')}:", e)
+                    f"{format_datetime(timestamp_lower)}:", e)
                 set_metrics_to_nan()
             finally:
                 # Increment iteration
