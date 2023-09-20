@@ -62,7 +62,8 @@ class ResourceClient:
     URL = f'https://gateway-arbitrum.network.thegraph.com/api/{SUBGRAPH_API_KEY}/subgraphs/id/7RuVCeRzAHL5apu6SWHyUEVt3Ko2pUv2wMTiHQJaiUW9'
     PAGE_SIZE = 500
 
-    def _validate_response(self, response, list_key):
+    @staticmethod
+    def validate_response(response, list_key):
         response_json = response.json()
         errors = response_json.get('errors')
         data = response_json.get('data')
@@ -80,8 +81,8 @@ class ResourceClient:
             raise e
         return record_list
     
-    def _build_query(
-        self,
+    @staticmethod
+    def build_query(
         list_key: str,
         where: Dict,
         filters: Dict,
@@ -123,15 +124,11 @@ class ResourceClient:
         }}
         '''
         return query
-
-    def get_positions(self, timestamp_lower, timestamp_upper, page_size=PAGE_SIZE):
-        all_positions = []
-        query = self._build_query(
+    
+    def build_positions_query(self, where: Dict, page_size: int):
+        query = self.build_query(
             'positions',
-            where={ 
-                'createdAtTimestamp_gt': timestamp_lower,
-                'createdAtTimestamp_lt': timestamp_upper
-            },
+            where=where,
             filters={
                 'first': page_size,
                 'orderBy': 'createdAtTimestamp',
@@ -140,116 +137,55 @@ class ResourceClient:
             includes=['id', 'createdAtTimestamp', 'mint'],
             nested_includes={ 'market': ['id'] }
         )
+        print('positions query!!', query)
+        return query
+
+    def get_positions(self, timestamp_lower, timestamp_upper, page_size=PAGE_SIZE):
+        all_positions = []
+        query = self.build_positions_query(
+             where={ 
+                'createdAtTimestamp_gt': timestamp_lower,
+                'createdAtTimestamp_lt': timestamp_upper
+            },
+            page_size=page_size
+        )
         response = requests.post(self.URL, json={'query': query})
-        curr_positions = self._validate_response(response, 'positions')
+        curr_positions = self.validate_response(response, 'positions')
         page_count = 0
         while len(curr_positions) > 0:
             page_count += 1
             print(f'Fetching positions page # {page_count}')
             all_positions.extend(curr_positions)
-            query = self._build_query(
-                'positions',
+            query = self.build_positions_query(
                 where={ 
                     'createdAtTimestamp_gt': timestamp_lower,
                     'createdAtTimestamp_lt': int(curr_positions[-1]['createdAtTimestamp'])
                 },
-                filters={
-                    'first': page_size,
-                    'orderBy': 'createdAtTimestamp',
-                    'orderDirection': 'desc'
-                },
-                includes=['id', 'createdAtTimestamp', 'mint'],
-                nested_includes={ 'market': ['id'] }
+                page_size=page_size
             )
             response = requests.post(self.URL, json={'query': query})
-            curr_positions = self._validate_response(response, 'positions')
+            curr_positions = self.validate_response(response, 'positions')
         
         return all_positions
 
     def get_all_positions(self, page_size = PAGE_SIZE):
         all_positions = []
-        query = self._build_query(
-            'positions',
-            where={},
-            filters={
-                'first': page_size,
-                'orderBy': 'createdAtTimestamp',
-                'orderDirection': 'desc'
-            },
-            includes=['id', 'createdAtTimestamp', 'mint'],
-            nested_includes={ 'market': ['id'] }
-        )
+        query = self.build_positions_query(where={}, page_size=page_size)
         response = requests.post(self.URL, json={'query': query})
-        curr_positions = self._validate_response(response, 'positions')
+        curr_positions = self.validate_response(response, 'positions')
         while len(curr_positions) > 0:
             all_positions.extend(curr_positions)
-            query = self._build_query(
-                'positions',
+            query = self.build_positions_query(
                 where={
                     'createdAtTimestamp_lt': int(curr_positions[-1]['createdAtTimestamp'])
                 },
-                filters={
-                    'first': page_size,
-                    'orderBy': 'createdAtTimestamp',
-                    'orderDirection': 'desc'
-                },
-                includes=['id', 'createdAtTimestamp', 'mint'],
-                nested_includes={ 'market': ['id'] }
+                page_size=page_size
             )
             response = requests.post(self.URL, json={'query': query})
-            curr_positions = self._validate_response(response, 'positions')
+            curr_positions = self.validate_response(response, 'positions')
 
         print('all_positions', len(all_positions))
         return all_positions
-
-    def get_mint_total_per_market(self, page_size = PAGE_SIZE):
-        all_positions = []
-        mint_total_per_market = {}
-        query = f'''
-        {{
-            positions(first: {page_size}, orderBy: createdAtTimestamp, orderDirection: desc)  {{
-                id
-                createdAtTimestamp
-                mint
-                market {{
-                    id
-                }}
-            }}
-        }}
-        '''
-        response = requests.post(self.URL, json={'query': query})
-        curr_positions = response.json().get('data', {}).get('positions', [])
-        # print('response', response.json())
-        mint_total = 0
-        while len(curr_positions) > 0:
-            all_positions.extend(curr_positions)
-            for position in curr_positions:
-                if position['market']['id'] not in mint_total_per_market:
-                    mint_total_per_market[position['market']['id']] = 0
-                mint_total_per_market[position['market']['id']] += int(position['mint'])
-                mint_total += int(position['mint'])
-
-            query = f'''
-            {{
-                positions(
-                    where: {{ createdAtTimestamp_lt: { int(curr_positions[-1]['createdAtTimestamp']) } }}, 
-                    first: {page_size}, orderBy: createdAtTimestamp, orderDirection: desc)  {{
-                    id
-                    createdAtTimestamp
-                    mint
-                    market {{
-                        id
-                    }}
-                }}
-            }}
-            '''
-            response = requests.post(self.URL, json={'query': query})
-            curr_positions = response.json().get('data', {}).get('positions', [])
-
-        print('all_positions', len(all_positions))
-        print('mint_total', mint_total)
-        print('mint_total_per_market', mint_total_per_market)
-        return all_positions, mint_total_per_market
 
     def get_builds(self, timestamp_lower, timestamp_upper, page_size=PAGE_SIZE):
         builds = []
