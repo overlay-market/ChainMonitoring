@@ -15,14 +15,16 @@ from constants import (
     AVAILABLE_MARKETS,
     ALL_MARKET_LABEL,
     QUERY_INTERVAL,
-    MINT_DIVISOR
+    MINT_DIVISOR,
+    CONTRACT_ADDRESS
 )
+from utils import format_datetime
 from prometheus_metrics import metrics
 from subgraph.client import ResourceClient as SubgraphClient
 
 
 # Contract addresses
-STATE = '0xC3cB99652111e7828f38544E3e94c714D8F9a51a'
+STATE = CONTRACT_ADDRESS
 
 # network.connect('arbitrum-main')
 

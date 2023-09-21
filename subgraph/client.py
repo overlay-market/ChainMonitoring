@@ -2,7 +2,7 @@ import json
 import pandas as pd
 import requests
 from pydantic import BaseModel, ValidationError
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from constants import SUBGRAPH_API_KEY
 
@@ -22,11 +22,16 @@ class Position(BaseModel):
     market: Market
 
 
+class PositionForBuild(BaseModel):
+    currentOi: str
+    fractionUnwound: str
+
+
 class Build(BaseModel):
     id: str
     timestamp: str
     collateral: str
-    position: Position
+    position: PositionForBuild
     owner: Account
 
 
@@ -89,23 +94,9 @@ class ResourceClient:
         includes: List[str],
         nested_includes: Dict
     ):
-        # where = {
-        #     'createdAtTimestamp_gt': '123',
-        # }
         where_string = json.dumps(where).replace('"', '')
-
-        # filters = {
-        #     'first': 100,
-        #     'orderDirection': 'desc',
-        # }
         filters_string = json.dumps(filters).replace('"', '').replace('{', '').replace('}', '')
-
-        # includes = ['id', 'mint']
         includes_string = '\n'.join(includes)
-
-        # nested_includes = {
-        #     'market': ['id']
-        # }
         nested_includes_string = ''
         for key, value in nested_includes.items():
             attrs_string = '\n'.join(value)
@@ -114,7 +105,6 @@ class ResourceClient:
                     {attrs_string}
                 }}
             '''
-
         query = f'''
         {{
             {list_key}(where: {where_string}, {filters_string}) {{
@@ -125,7 +115,7 @@ class ResourceClient:
         '''
         return query
     
-    def build_positions_query(self, where: Dict, page_size: int):
+    def build_query_for_positions(self, where: Dict, page_size: int):
         query = self.build_query(
             'positions',
             where=where,
@@ -140,10 +130,27 @@ class ResourceClient:
         # print('positions query!!', query)
         return query
 
+    def build_query_for_builds(self, where: Dict, page_size: int):
+        query = self.build_query(
+            'builds',
+            where=where,
+            filters={
+                'first': page_size,
+                'orderBy': 'timestamp',
+                'orderDirection': 'desc'
+            },
+            includes=['timestamp', 'collateral', 'id'],
+            nested_includes={
+                'position': ['currentOi', 'fractionUnwound'],
+                'owner': ['id']
+            }
+        )
+        return query
+
     def get_positions(self, timestamp_lower, timestamp_upper, page_size=PAGE_SIZE):
         all_positions = []
-        query = self.build_positions_query(
-             where={ 
+        query = self.build_query_for_positions(
+             where={
                 'createdAtTimestamp_gt': timestamp_lower,
                 'createdAtTimestamp_lt': timestamp_upper
             },
@@ -156,7 +163,7 @@ class ResourceClient:
             page_count += 1
             print(f'Fetching positions page # {page_count}')
             all_positions.extend(curr_positions)
-            query = self.build_positions_query(
+            query = self.build_query_for_positions(
                 where={ 
                     'createdAtTimestamp_gt': timestamp_lower,
                     'createdAtTimestamp_lt': int(curr_positions[-1]['createdAtTimestamp'])
@@ -170,12 +177,12 @@ class ResourceClient:
 
     def get_all_positions(self, page_size = PAGE_SIZE):
         all_positions = []
-        query = self.build_positions_query(where={}, page_size=page_size)
+        query = self.build_query_for_positions(where={}, page_size=page_size)
         response = requests.post(self.URL, json={'query': query})
         curr_positions = self.validate_response(response, 'positions')
         while len(curr_positions) > 0:
             all_positions.extend(curr_positions)
-            query = self.build_positions_query(
+            query = self.build_query_for_positions(
                 where={
                     'createdAtTimestamp_lt': int(curr_positions[-1]['createdAtTimestamp'])
                 },
@@ -187,199 +194,28 @@ class ResourceClient:
         print('all_positions', len(all_positions))
         return all_positions
 
-    def get_builds(self, timestamp_lower, timestamp_upper, page_size=PAGE_SIZE):
-        builds = []
-        query = f'''
-        {{
-            builds(where: {{ timestamp_gt: { timestamp_lower }, timestamp_lt: { timestamp_upper } }}, first: {page_size}, orderBy: timestamp, orderDirection: desc) {{
-                timestamp
-                collateral
-                id
-                position {{
-                    currentOi
-                    fractionUnwound
-                }}
-                owner {{
-                    id
-                }}
-            }}
-        }}
-        '''
-        response = requests.post(self.URL, json={'query': query})
-        curr_builds = response.json().get('data', {}).get('builds', [])
-        page_count = 0
-        while len(curr_builds) > 0:
-            page_count += 1
-            print(f'Fetching builds page # {page_count}')
-            builds.extend(curr_builds)
-            query = f'''
-            {{
-                builds(where: {{ timestamp_gt: { timestamp_lower }, timestamp_lt: { timestamp_upper } }}, first: {page_size}, orderBy: timestamp, orderDirection: desc) {{
-                    timestamp
-                    collateral
-                    id
-                    position {{
-                        currentOi
-                        fractionUnwound
-                    }}
-                    owner {{
-                        id
-                    }}
-                }}
-            }}
-            '''
-            response = requests.post(self.URL, json={'query': query})
-            curr_builds = response.json().get('data', {}).get('builds', [])
-
-        return builds
-
-    def get_all_builds(self, page_size=PAGE_SIZE):
-        all_builds = []
-        query = f'''
-        {{
-            builds(first: {page_size}, orderBy: timestamp, orderDirection: desc) {{
-                timestamp
-                collateral
-                id
-                position {{
-                    currentOi
-                    fractionUnwound
-                }}
-                owner {{
-                    id
-                }}
-            }}
-        }}
-        '''
-        response = requests.post(self.URL, json={'query': query})
-        curr_builds = response.json().get('data', {}).get('builds', [])
-        while len(curr_builds) > 0:
-            all_builds.extend(curr_builds)
-            query = f'''
-            {{
-                builds(where: {{ timestamp_lt: { int(curr_builds[-1]['timestamp']) } }}, first: {page_size}, orderBy: timestamp, orderDirection: desc) {{
-                    timestamp
-                    collateral
-                    id
-                    position {{
-                        currentOi
-                        fractionUnwound
-                    }}
-                    owner {{
-                        id
-                    }}
-                }}
-            }}
-            '''
-            response = requests.post(self.URL, json={'query': query})
-            curr_builds = response.json().get('data', {}).get('builds', [])
-        
-        return all_builds
-
     def get_all_live_positions(self, page_size=PAGE_SIZE):
         live_positions = []
-        query = f'''
-        {{
-            builds(first: {page_size}, orderBy: timestamp, orderDirection: desc) {{
-                timestamp
-                collateral
-                id
-                position {{
-                    currentOi
-                    fractionUnwound
-                }}
-                owner {{
-                    id
-                }}
-            }}
-        }}
-        '''
+        query = self.build_query_for_builds(where={}, page_size=page_size)
         response = requests.post(self.URL, json={'query': query})
-        curr_builds = response.json().get('data', {}).get('builds', [])
+        curr_builds = self.validate_response(response, 'builds')
         curr_live_positions = extract_live_positions(curr_builds)
         page_count = 0
         while True:
             page_count += 1
             print(f'Fetching builds page # {page_count}')
             live_positions.extend(curr_live_positions)
-            query = f'''
-            {{
-                builds(where: {{ timestamp_lt: { int(curr_builds[-1]['timestamp']) } }}, first: {page_size}, orderBy: timestamp, orderDirection: desc) {{
-                    timestamp
-                    collateral
-                    id
-                    position {{
-                        currentOi
-                        fractionUnwound
-                    }}
-                    owner {{
-                        id
-                    }}
-                }}
-            }}
-            '''
+            query = self.build_query_for_builds(
+                where={
+                    'timestamp_lt': int(curr_builds[-1]['timestamp'])
+                },
+                page_size=page_size
+            )
             response = requests.post(self.URL, json={'query': query})
-            curr_builds = response.json().get('data', {}).get('builds', [])
+            curr_builds = self.validate_response(response, 'builds')
 
             if len(curr_builds) == 0:
                 break
 
             curr_live_positions = extract_live_positions(curr_builds)
-        return live_positions
-
-    def get_live_positions(self, timestamp_lower, timestamp_upper, page_size=PAGE_SIZE):
-        live_positions = []
-        query = f'''
-        {{
-            builds(
-                where: {{ timestamp_gt: { timestamp_lower }, timestamp_lt: { timestamp_upper } }},
-                first: {page_size},
-                orderBy: timestamp,
-                orderDirection: desc
-            ) {{
-                timestamp
-                collateral
-                id
-                position {{
-                    currentOi
-                    fractionUnwound
-                }}
-                owner {{
-                    id
-                }}
-            }}
-        }}
-        '''
-        response = requests.post(self.URL, json={'query': query})
-        curr_builds = response.json().get('data', {}).get('builds', [])
-        page_count = 0
-        while len(curr_builds) > 0:
-            page_count += 1
-            print(f'Fetching builds page # {page_count}')
-            curr_live_positions = extract_live_positions(curr_builds)
-            live_positions.extend(curr_live_positions)
-            query = f'''
-            {{
-                builds(
-                    where: {{ timestamp_gt: { timestamp_lower }, timestamp_lt: { int(curr_builds[-1]['timestamp']) } }},
-                    first: {page_size},
-                    orderBy: timestamp,
-                    orderDirection: desc
-                ) {{
-                    timestamp
-                    collateral
-                    id
-                    position {{
-                        currentOi
-                        fractionUnwound
-                    }}
-                    owner {{
-                        id
-                    }}
-                }}
-            }}
-            '''
-            response = requests.post(self.URL, json={'query': query})
-            curr_builds = response.json().get('data', {}).get('builds', [])
-
         return live_positions
