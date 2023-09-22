@@ -2,6 +2,7 @@ import datetime
 import json
 import math
 import threading
+import traceback
 
 import asyncio
 import pandas as pd
@@ -179,13 +180,17 @@ async def query_upnl():
 
                 # Wait for the next iteration
                 await asyncio.sleep(QUERY_INTERVAL)
+                # if iteration == 10:
+                #     1 / 0
             except Exception as e:
                 print(
                     f"[upnl] An error occurred on iteration "
                     f"{iteration} timestamp_start "
                     f"{datetime.datetime.utcfromtimestamp(timestamp_start).strftime('%Y-%m-%d %H:%M:%S')}:", e)
+                traceback.print_exc()
     except Exception as e:
         print(f"[upnl] An error occurred:", e)
+        traceback.print_exc()
         set_metrics_to_nan()
 
 
