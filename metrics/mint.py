@@ -3,6 +3,7 @@ import math
 import pandas as pd
 import threading
 import time
+import traceback
 
 from constants import (
     MAP_MARKET_ID_TO_NAME,
@@ -155,6 +156,8 @@ def query_mint():
         timestamp_lower = int(all_positions[0]['createdAtTimestamp'])
         timestamp_upper = math.ceil(datetime.datetime.now().timestamp())
 
+        should_initialize_metrics = False
+
         while True:
             try:
                 print('===================================')
@@ -167,6 +170,11 @@ def query_mint():
                     '[ovl_token_minted] timestamp_upper',
                     format_datetime(timestamp_upper)
                 )
+                
+                if should_initialize_metrics:
+                    all_positions = subgraph_client.get_all_positions()
+                    initialize_metrics(all_positions)
+                    should_initialize_metrics = False
 
                 # Test market that overmints every 200th iteration
                 # if is_divisible(iteration, 200):
@@ -185,12 +193,16 @@ def query_mint():
                 print(f'[ovl_token_minted] new positions', len(positions))
                 timestamp_lower, timestamp_upper = query_single_time_window(
                     positions, timestamp_lower)
+                # if iteration == 10:
+                #     1 / 0
             except Exception as e:
                 print(
                     f"[ovl_token_minted] An error occurred on iteration "
                     f"{iteration} timestamp_lower "
                     f"{format_datetime(timestamp_lower)}:", e)
+                traceback.print_exc()
                 set_metrics_to_nan()
+                should_initialize_metrics = True
             finally:
                 # Increment iteration
                 iteration += 1
@@ -200,6 +212,7 @@ def query_mint():
                 
     except Exception as e:
         print(f"[ovl_token_minted] An error occurred:", e)
+        traceback.print_exc()
         set_metrics_to_nan()
 
 
