@@ -140,6 +140,34 @@ def query_single_time_window(
 
 
 def query_mint(subgraph_client, stop_at_iteration=math.inf):
+    """
+    Query mint data from the subgraph and update metrics.
+
+    Args:
+        subgraph_client: An instance of the subgraph client used for querying data.
+        stop_at_iteration (int, optional): The maximum number of iterations to run the query. Default is math.inf.
+
+    Returns:
+        None
+
+    This function queries mint data from the provided subgraph client, updates metrics, and handles exceptions.
+
+    It performs the following steps:
+        1. Initializes metrics and sets them to NaN.
+        2. Gets all positions from the subgraph and initializes metrics based on the positions.
+        3. Runs iterations to query mint data within specified time windows.
+        4. Updates metrics with the queried data.
+        5. Handles exceptions and resets metrics if an error occurs.
+
+    Args Details:
+        - `subgraph_client`: An instance of the subgraph client used for querying data.
+        - `stop_at_iteration`: The maximum number of iterations to run the query (default is math.inf).
+
+    Note:
+        - `AVAILABLE_MARKETS` is a global variable.
+        - `initialize_metrics`, `set_metrics_to_nan`, and `query_single_time_window` are defined functions.
+        - `QUERY_INTERVAL` is a global variable.
+    """
     print('[ovl_token_minted] Starting query...')
     set_metrics_to_nan()
     try:

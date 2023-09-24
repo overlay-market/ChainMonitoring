@@ -19,20 +19,12 @@ from constants import (
     MINT_DIVISOR,
     CONTRACT_ADDRESS
 )
-from utils import format_datetime
 from prometheus_metrics import metrics
 from subgraph.client import ResourceClient as SubgraphClient
 
 
 # Contract addresses
 STATE = CONTRACT_ADDRESS
-
-# network.connect('arbitrum-main')
-
-# # Dank mids setup
-# dank_w3 = setup_dank_w3_from_sync(web3)
-
-# subgraph_client = SubgraphClient()
 
 
 def write_to_json(data, filename):
@@ -41,6 +33,27 @@ def write_to_json(data, filename):
 
 
 def load_contract(address):
+    """
+    Load a contract using the provided address.
+
+    Args:
+        address (str): The Ethereum address of the contract.
+
+    Returns:
+        Contract: An instance of the loaded contract.
+
+    This function attempts to load the contract directly from memory. If that fails, it fetches it from the explorer
+    the first time the script is run. It then sets up the contract with a patched web3 instance and returns the
+    resulting contract.
+
+    Args Details:
+        - `address`: The Ethereum address of the contract.
+
+    Note:
+        - `Contract`, `setup_dank_w3_from_sync`, and `patch_contract` are assumed to be defined functions.
+        - `web3` is assumed to be a global object representing the Ethereum web3 instance.
+
+    """
     try:
         # Loads faster from memory
         contract = Contract(address)
@@ -53,6 +66,28 @@ def load_contract(address):
 
 
 async def get_pos_value(state, pos):
+    """
+    Asynchronously retrieve the value of a position from the state.
+
+    Args:
+        state: The state object providing access to position values.
+        pos (tuple): A tuple containing the position information (market ID, position ID, user address).
+
+    Returns:
+        Any: The value of the position, or None if an error occurs.
+
+    This asynchronous function attempts to retrieve the value of a position from the state. If successful, it returns
+    the value. If a ContractLogicError is raised, it prints the error message and returns None.
+
+    Args Details:
+        - `state`: The state object providing access to position values.
+        - `pos`: A tuple containing the position information (market ID, position ID, user address).
+
+    Note:
+        - `ContractLogicError` is assumed to be defined.
+        - The `state.value.coroutine` method is assumed to be an asynchronous method for fetching position values.
+
+    """
     try:
         return await state.value.coroutine(pos[0], pos[1], pos[2])
     except ContractLogicError as e:
@@ -61,6 +96,27 @@ async def get_pos_value(state, pos):
 
 
 async def get_current_value_of_live_positions(live_positions_df):
+    """
+    Asynchronously retrieve the current value of live positions.
+
+    Args:
+        live_positions_df (pandas.DataFrame): DataFrame containing live position information.
+
+    Returns:
+        list: A list of position values.
+
+    This asynchronous function retrieves the current value of live positions by batches using an Ethereum smart contract
+    and returns a list of the values.
+
+    Args Details:
+        - `live_positions_df`: A pandas DataFrame containing live position information.
+
+    Note:
+        - `load_contract` and `get_pos_value` are assumed to be defined functions.
+        - `STATE` is assumed to be a global variable representing the address of the state contract.
+        - The function uses asyncio to concurrently fetch position values, improving performance.
+
+    """
     state = load_contract(STATE)
     pos_list = live_positions_df[['market', 'owner.id', 'position_id']].values.tolist()
     values = []
@@ -81,6 +137,27 @@ async def get_current_value_of_live_positions(live_positions_df):
 
 
 async def process_live_positions(live_positions):
+    """
+    Asynchronously process live positions data.
+
+    Args:
+        live_positions (list): List of live position data, where each element is a dictionary
+            containing information about a live position.
+
+    Returns:
+        pandas.DataFrame: DataFrame containing processed live position information.
+
+    This asynchronous function processes live position data by filtering out positions not in available markets,
+    retrieving their current values, and calculating UPNL (Unrealized Profit and Loss) metrics.
+
+    Args Details:
+        - `live_positions`: List of live position data.
+
+    Note:
+        - `AVAILABLE_MARKETS`, `get_current_value_of_live_positions`, and `MINT_DIVISOR` are assumed to be defined.
+        - This function utilizes asynchronous operations for improved performance.
+
+    """
     live_positions_df = pd.DataFrame(live_positions)
     live_positions_df.drop(
         live_positions_df[~live_positions_df['market'].isin(AVAILABLE_MARKETS)].index,
@@ -95,6 +172,21 @@ async def process_live_positions(live_positions):
 
 
 def set_metrics_to_nan():
+    """
+    Set metrics values to NaN to indicate a query error.
+
+    This function updates the 'mint_gauge' metrics labels for all markets, setting their values to NaN.
+    This is typically used to indicate that there was an issue with the query or data retrieval.
+
+    Note:
+        - `metrics` is a global object representing a metrics collector.
+        - `AVAILABLE_MARKETS` is a global variable.
+        - `MARKET_MAP` is a global variable.
+        - `ALL_MARKET_LABEL` is a global variable.
+
+    Returns:
+        None
+    """
     # Set metric to NaN to indicate that something went wrong with the query
     metrics['upnl_gauge'].labels(market=ALL_MARKET_LABEL).set(math.nan)
     metrics['collateral_rem_gauge'].labels(market=ALL_MARKET_LABEL).set(math.nan)
@@ -106,6 +198,26 @@ def set_metrics_to_nan():
 
 
 def set_metrics(live_positions_df_with_curr_values):
+    """
+    Set metrics based on processed live positions data.
+
+    Args:
+        live_positions_df_with_curr_values (pandas.DataFrame): DataFrame containing processed live position information.
+
+    Returns:
+        None
+
+    This function sets various metrics based on the processed live position data, including UPNL (Unrealized Profit and Loss),
+    collateral, and UPNL percentage metrics.
+
+    Args Details:
+        - `live_positions_df_with_curr_values`: DataFrame containing processed live position information.
+
+    Note:
+        - `set_metrics_to_nan`, `metrics`, `AVAILABLE_MARKETS`, `MARKET_MAP`, and `ALL_MARKET_LABEL` are assumed to be defined.
+        - This function updates metrics based on the provided live position data.
+
+    """
     if not len(live_positions_df_with_curr_values):
         set_metrics_to_nan()
         return
@@ -120,15 +232,11 @@ def set_metrics(live_positions_df_with_curr_values):
     metrics['upnl_gauge'].labels(market=ALL_MARKET_LABEL).set(upnl_total)
     for market_id in upnl_total_per_market:
         metrics['upnl_gauge'].labels(market=MARKET_MAP[market_id]).set(upnl_total_per_market[market_id])
-    print('[upnl] upnl_total!!', upnl_total)
-    print('[upnl] upnl_total_per_market!!', upnl_total_per_market)
 
     # Set initial value for collateral metric so far
     collateral_total = live_positions_df['collateral_rem'].sum()
     collateral_total_per_market_df = live_positions_df.groupby(by='market')['collateral_rem'].sum().reset_index()
     collateral_total_per_market = dict(zip(collateral_total_per_market_df['market'], collateral_total_per_market_df['collateral_rem']))
-    print('[upnl] collateral_total!!', collateral_total)
-    print('[upnl] collateral_total_per_market', collateral_total_per_market)
     metrics['collateral_rem_gauge'].labels(market=ALL_MARKET_LABEL).set(collateral_total)
     for market_id in collateral_total_per_market:
         metrics['collateral_rem_gauge'].labels(market=MARKET_MAP[market_id]).set(collateral_total_per_market[market_id])
@@ -140,16 +248,46 @@ def set_metrics(live_positions_df_with_curr_values):
     metrics['upnl_pct_gauge'].labels(market=ALL_MARKET_LABEL).set(upnl_total / collateral_total)
 
 
-async def query_upnl():
+async def query_upnl(subgraph_client, stop_at_iteration=math.inf):
+    """
+    Asynchronously query unrealized profit and loss (UPNL) metrics from the subgraph.
+
+    Args:
+        subgraph_client: An instance of the subgraph client used for querying data.
+        stop_at_iteration (int, optional): The maximum number of iterations to run the query. Default is math.inf.
+
+    Returns:
+        None
+
+    This asynchronous function queries UPNL metrics from the provided subgraph client, connects to the Arbitrum network,
+    and handles exceptions.
+
+    It performs the following steps:
+        1. Connects to the Arbitrum network.
+        2. Initializes metrics and sets them to NaN.
+        3. Fetches live positions from the subgraph and calculates current values.
+        4. Sets UPNL metrics based on the live positions and current values.
+        5. Runs iterations to update UPNL metrics.
+        6. Handles exceptions and resets metrics if an error occurs.
+
+    Args Details:
+        - `subgraph_client`: An instance of the subgraph client used for querying data.
+        - `stop_at_iteration`: The maximum number of iterations to run the query (default is math.inf).
+
+    Note:
+        - `process_live_positions`, `set_metrics`, and `set_metrics_to_nan` are defined functions.
+        - `QUERY_INTERVAL` is a global variable.
+        - `network` is a global object representing network connectivity.
+
+    """
     print('[upnl] Starting query...')
 
     print('[upnl] Connecting to arbitrum network...')
     network.connect('arbitrum-main')
 
-    subgraph_client = SubgraphClient()
     set_metrics_to_nan()
     try:
-        iteration = 1
+        iteration = 0
 
         # Fetch all live positions so far from the subgraph
         print('[upnl] Getting live positions from subgraph...')
@@ -163,7 +301,7 @@ async def query_upnl():
 
         await asyncio.sleep(QUERY_INTERVAL)
 
-        while True:
+        while iteration < stop_at_iteration:
             try:
                 print('===================================')
                 print(f'[upnl] Running iteration #{iteration}...')
@@ -194,7 +332,8 @@ async def query_upnl():
         set_metrics_to_nan()
 
 
-thread = threading.Thread(target=asyncio.run, args=(query_upnl(),))
+subgraph_client = SubgraphClient()
+thread = threading.Thread(target=asyncio.run, args=(query_upnl(subgraph_client),))
 
 
 if __name__ == '__main__':
