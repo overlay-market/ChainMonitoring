@@ -2,14 +2,16 @@ import datetime
 import math
 import time
 import unittest
+
+from unittest.mock import MagicMock
+
 from prometheus_client import REGISTRY
-from metrics.mint import query_single_time_window, initialize_metrics
+from metrics.mint import query_single_time_window, initialize_metrics, query_mint
 from constants import (
     ALL_MARKET_LABEL,
     MINT_DIVISOR,
     QUERY_INTERVAL
 )
-
 
 INITIAL_POSITIONS = [
     {
@@ -34,14 +36,6 @@ INITIAL_POSITIONS = [
         "mint": 1 * MINT_DIVISOR,
         "market": {
             "id": "0x33659282d39e62b62060c3f9fb2230e97db15f1e"
-        }
-    },
-    {
-        "id": "0x5114215415ee91ab5d973ba62fa9153ece1f6c5a-0x05",
-        "createdAtTimestamp": "1693633263",
-        "mint": 1 * MINT_DIVISOR,
-        "market": {
-            "id": "0x5114215415ee91ab5d973ba62fa9153ece1f6c5a"
         }
     },
     {
@@ -86,7 +80,7 @@ class TestMintMetric(unittest.TestCase):
             'ovl_token_minted',
             labels={'market': ALL_MARKET_LABEL}
         )
-        self.assertEqual(8.0, mint_all_market)
+        self.assertEqual(7.0, mint_all_market)
 
     def test_no_new_positions(self):
         initialize_metrics(INITIAL_POSITIONS)
@@ -96,21 +90,18 @@ class TestMintMetric(unittest.TestCase):
         )
 
         positions = []
-        timestamp_start = 1693832515
         timestamp_lower = 1693671394
-        timestamp_upper = 1693830916
 
+        timestamp_start = math.ceil(datetime.datetime.now().timestamp())
         next_timestamp_lower, next_timestamp_upper = query_single_time_window(
             positions=positions,
-            timestamp_start=timestamp_start,
             timestamp_lower=timestamp_lower,
-            timestamp_upper=timestamp_upper
         )
 
         print('next_timestamp_lower', next_timestamp_lower)
         print('next_timestamp_upper', next_timestamp_upper)
-        self.assertEqual(timestamp_lower, next_timestamp_lower)
-        self.assertEqual(timestamp_start, next_timestamp_upper)
+        self.assertEqual(next_timestamp_lower, timestamp_lower)
+        self.assertTrue(next_timestamp_upper >= timestamp_start)
         after =  REGISTRY.get_sample_value(
             'ovl_token_minted',
             labels={'market': ALL_MARKET_LABEL}
@@ -135,21 +126,18 @@ class TestMintMetric(unittest.TestCase):
                 }
             },
         ]
-        timestamp_start = 1693633360
         timestamp_lower = 1693633160
-        timestamp_upper = 1693633360
+        timestamp_start = math.ceil(datetime.datetime.now().timestamp())
 
         next_timestamp_lower, next_timestamp_upper = query_single_time_window(
             positions=positions,
-            timestamp_start=timestamp_start,
             timestamp_lower=timestamp_lower,
-            timestamp_upper=timestamp_upper
         )
 
         print('next_timestamp_lower', next_timestamp_lower)
         print('next_timestamp_upper', next_timestamp_upper)
         self.assertEqual(1693633260, next_timestamp_lower)
-        self.assertEqual(timestamp_start, next_timestamp_upper)
+        self.assertTrue(next_timestamp_upper >= timestamp_start)
         after =  REGISTRY.get_sample_value(
             'ovl_token_minted',
             labels={'market': ALL_MARKET_LABEL}
@@ -175,17 +163,14 @@ class TestMintMetric(unittest.TestCase):
                 }
             },
         ]
-        timestamp_start_1 = 1693633360
+        timestamp_start = math.ceil(datetime.datetime.now().timestamp())
         timestamp_lower_1 = 1693633160
-        timestamp_upper_1 = 1693633360
         next_timestamp_lower, next_timestamp_upper = query_single_time_window(
             positions=positions_1,
-            timestamp_start=timestamp_start_1,
             timestamp_lower=timestamp_lower_1,
-            timestamp_upper=timestamp_upper_1
         )
-        self.assertEqual(1693633260, next_timestamp_lower)
-        self.assertEqual(timestamp_start_1, next_timestamp_upper)
+        self.assertEqual(next_timestamp_lower, 1693633260)
+        self.assertTrue(next_timestamp_upper >= timestamp_start)
         after =  REGISTRY.get_sample_value(
             'ovl_token_minted',
             labels={'market': ALL_MARKET_LABEL}
@@ -206,20 +191,17 @@ class TestMintMetric(unittest.TestCase):
                 }
             },
         ]
-        timestamp_start_2 = math.ceil(datetime.datetime.now().timestamp())
         timestamp_lower_2 = next_timestamp_lower
-        timestamp_upper_2 = next_timestamp_upper
+        timestamp_start = math.ceil(datetime.datetime.now().timestamp())
 
         next_timestamp_lower, next_timestamp_upper = query_single_time_window(
             positions=positions_2,
-            timestamp_start=timestamp_start_2,
             timestamp_lower=timestamp_lower_2,
-            timestamp_upper=timestamp_upper_2
         )
         print('next_timestamp_lower', next_timestamp_lower)
         print('next_timestamp_upper', next_timestamp_upper)
-        self.assertEqual(1693633460, next_timestamp_lower)
-        self.assertEqual(timestamp_start_2, next_timestamp_upper)
+        self.assertEqual(next_timestamp_lower, 1693633460)
+        self.assertTrue(next_timestamp_upper >= timestamp_start)
         after =  REGISTRY.get_sample_value(
             'ovl_token_minted',
             labels={'market': ALL_MARKET_LABEL}
@@ -227,3 +209,35 @@ class TestMintMetric(unittest.TestCase):
         print('after', after)
         self.assertEqual(6.0, after - initial)
         # End of second iteration
+
+    def test_subgraph_client(self):
+        mock_subgraph_client = MagicMock()
+        mock_subgraph_client.get_all_positions.return_value = INITIAL_POSITIONS
+        mock_subgraph_client.get_positions.return_value = []
+        query_mint(
+            subgraph_client=mock_subgraph_client,
+            stop_at_iteration=2
+        )
+        mint_all_market =  REGISTRY.get_sample_value(
+            'ovl_token_minted',
+            labels={'market': ALL_MARKET_LABEL}
+        )
+        print('mint_all_market', mint_all_market)
+        self.assertEqual(mint_all_market, 7.0)
+
+    def test_subgraph_error_sets_metrics_to_nan(self):
+        mock_subgraph_client = MagicMock()
+        mock_subgraph_client.get_all_positions.return_value = INITIAL_POSITIONS
+        mock_subgraph_client.get_positions.side_effect = Exception(
+            'Subgraph API returned empty data'
+        )
+        query_mint(
+            subgraph_client=mock_subgraph_client,
+            stop_at_iteration=2
+        )
+        mint_all_market =  REGISTRY.get_sample_value(
+            'ovl_token_minted',
+            labels={'market': ALL_MARKET_LABEL}
+        )
+        print('mint_all_market', mint_all_market)
+        self.assertTrue(math.isnan(mint_all_market))

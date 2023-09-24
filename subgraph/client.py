@@ -5,34 +5,7 @@ from pydantic import BaseModel, ValidationError
 from typing import List, Dict, Optional
 
 from constants import SUBGRAPH_API_KEY
-
-
-class Account(BaseModel):
-    id: str
-
-
-class Market(BaseModel):
-    id: str
-
-
-class Position(BaseModel):
-    id: str
-    createdAtTimestamp: str
-    mint: str
-    market: Market
-
-
-class PositionForBuild(BaseModel):
-    currentOi: str
-    fractionUnwound: str
-
-
-class Build(BaseModel):
-    id: str
-    timestamp: str
-    collateral: str
-    position: PositionForBuild
-    owner: Account
+from .models import Position, Build
 
 
 MODEL_MAP = {

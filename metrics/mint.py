@@ -17,9 +17,6 @@ from prometheus_metrics import metrics
 from subgraph.client import ResourceClient as SubgraphClient
 
 
-subgraph_client = SubgraphClient()
-
-
 def set_metrics_to_nan():
     """
     Set metrics values to NaN to indicate a query error.
@@ -142,11 +139,11 @@ def query_single_time_window(
     return next_timestamp_lower, next_timestamp_upper
 
 
-def query_mint():
+def query_mint(subgraph_client, stop_at_iteration=math.inf):
     print('[ovl_token_minted] Starting query...')
     set_metrics_to_nan()
     try:
-        iteration = 1
+        iteration = 0
 
         # Calculate the total mint so far from the subgraph
         all_positions = subgraph_client.get_all_positions()
@@ -158,7 +155,7 @@ def query_mint():
 
         should_initialize_metrics = False
 
-        while True:
+        while iteration < stop_at_iteration:
             try:
                 print('===================================')
                 print(f'[ovl_token_minted] Running iteration #{iteration}...')
@@ -215,5 +212,5 @@ def query_mint():
         traceback.print_exc()
         set_metrics_to_nan()
 
-
-thread = threading.Thread(target=query_mint)
+subgraph_client = SubgraphClient()
+thread = threading.Thread(target=query_mint, args=(subgraph_client,))
