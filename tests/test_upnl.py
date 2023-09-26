@@ -3,9 +3,10 @@ import pandas as pd
 import unittest
 from prometheus_client import REGISTRY
 
+from unittest.mock import MagicMock, AsyncMock
 
 from constants import ALL_MARKET_LABEL
-from metrics.upnl import set_metrics
+from metrics.upnl import set_metrics, query_upnl
 
 
 INITIAL_LIVE_POSITIONS_DF = pd.DataFrame([
@@ -82,7 +83,7 @@ INITIAL_LIVE_POSITIONS_DF = pd.DataFrame([
 ])
 
 
-class TestUpnlMetric(unittest.TestCase):
+class TestUpnlMetric(unittest.IsolatedAsyncioTestCase):
 
     def test_non_empty_live_positions(self):
         set_metrics(INITIAL_LIVE_POSITIONS_DF)
@@ -126,6 +127,19 @@ class TestUpnlMetric(unittest.TestCase):
 
     def test_no_live_positsions(self):
         set_metrics(pd.DataFrame([]))
+        upnl_allmarket =  REGISTRY.get_sample_value(
+            'upnl',
+            labels={'market': ALL_MARKET_LABEL}
+        )
+        print('upnl_allmarket', upnl_allmarket)
+        self.assertTrue(math.isnan(upnl_allmarket))
+
+    async def test_subgraph_error_sets_metrics_to_nan(self):
+        mock_subgraph_client = MagicMock()
+        mock_subgraph_client.get_all_live_positions.side_effect = Exception(
+            'Subgraph API returned empty data'
+        )
+        await query_upnl(mock_subgraph_client, 1)
         upnl_allmarket =  REGISTRY.get_sample_value(
             'upnl',
             labels={'market': ALL_MARKET_LABEL}
