@@ -42,6 +42,24 @@ class ResourceClient:
 
     @staticmethod
     def validate_response(response, list_key):
+        """
+        Validate the response from a subgraph API.
+
+        Args:
+            response (requests.Response): The HTTP response object.
+            list_key (str): The key for the list in the response JSON.
+
+        Returns:
+            list: A list of validated records.
+
+        Raises:
+            Exception: If there are errors in the subgraph API response or if the response data is empty.
+            ValidationError: If there is a validation error while processing the records.
+
+        Example:
+            response = requests.get(subgraph_url)
+            validated_records = validate_response(response, "positions")
+        """
         response_json = response.json()
         errors = response_json.get('errors')
         data = response_json.get('data')
@@ -67,6 +85,28 @@ class ResourceClient:
         includes: List[str],
         nested_includes: Dict
     ):
+        """
+        Build a GraphQL query string.
+
+        Args:
+            list_key (str): The key for the list to query.
+            where (Dict): A dictionary representing the 'where' condition.
+            filters (Dict): A dictionary representing filters.
+            includes (List[str]): A list of strings to include in the query.
+            nested_includes (Dict): A dictionary of nested includes.
+
+        Returns:
+            str: The generated GraphQL query string.
+
+        Example:
+            query = build_query(
+                list_key="positions",
+                where={"name": "John Doe"},
+                filters={"active": True},
+                includes=["name", "email"],
+                nested_includes={"profile": ["age", "location"]}
+            )
+        """
         where_string = json.dumps(where).replace('"', '')
         filters_string = json.dumps(filters).replace('"', '').replace('{', '').replace('}', '')
         includes_string = '\n'.join(includes)
