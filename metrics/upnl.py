@@ -6,10 +6,6 @@ import traceback
 
 import asyncio
 import pandas as pd
-from web3.exceptions import ContractLogicError
-from brownie import Contract, web3, network
-from dank_mids.brownie_patch import patch_contract
-from dank_mids.helpers import setup_dank_w3_from_sync
 
 from constants import (
     MAP_MARKET_ID_TO_NAME as MARKET_MAP,
@@ -20,11 +16,12 @@ from constants import (
     CONTRACT_ADDRESS
 )
 from prometheus_metrics import metrics
+from blockchain.client import ResourceClient as BlockchainClient
 from subgraph.client import ResourceClient as SubgraphClient
 
 
 # Contract addresses
-STATE = CONTRACT_ADDRESS
+CONTRACT_ADDRESS = CONTRACT_ADDRESS
 
 
 def write_to_json(data, filename):
@@ -32,70 +29,7 @@ def write_to_json(data, filename):
         json.dump({"data": data}, json_file, indent=4)
 
 
-def load_contract(address):
-    """
-    Load a contract using the provided address.
-
-    Args:
-        address (str): The Ethereum address of the contract.
-
-    Returns:
-        Contract: An instance of the loaded contract.
-
-    This function attempts to load the contract directly from memory. If that fails, it fetches it from the explorer
-    the first time the script is run. It then sets up the contract with a patched web3 instance and returns the
-    resulting contract.
-
-    Args Details:
-        - `address`: The Ethereum address of the contract.
-
-    Note:
-        - `Contract`, `setup_dank_w3_from_sync`, and `patch_contract` are assumed to be defined functions.
-        - `web3` is assumed to be a global object representing the Ethereum web3 instance.
-
-    """
-    try:
-        # Loads faster from memory
-        contract = Contract(address)
-    except ValueError:
-        # Loads from explorer first time script is run
-        contract = Contract.from_explorer(address)
-    dank_w3 = setup_dank_w3_from_sync(web3)
-    dank_contract = patch_contract(contract, dank_w3)
-    return dank_contract
-
-
-async def get_pos_value(state, pos):
-    """
-    Asynchronously retrieve the value of a position from the state.
-
-    Args:
-        state: The state object providing access to position values.
-        pos (tuple): A tuple containing the position information (market ID, position ID, user address).
-
-    Returns:
-        Any: The value of the position, or None if an error occurs.
-
-    This asynchronous function attempts to retrieve the value of a position from the state. If successful, it returns
-    the value. If a ContractLogicError is raised, it prints the error message and returns None.
-
-    Args Details:
-        - `state`: The state object providing access to position values.
-        - `pos`: A tuple containing the position information (market ID, position ID, user address).
-
-    Note:
-        - `ContractLogicError` is assumed to be defined.
-        - The `state.value.coroutine` method is assumed to be an asynchronous method for fetching position values.
-
-    """
-    try:
-        return await state.value.coroutine(pos[0], pos[1], pos[2])
-    except ContractLogicError as e:
-        print(e)
-        return
-
-
-async def get_current_value_of_live_positions(live_positions_df):
+async def get_current_value_of_live_positions(blockchain_client, live_positions_df):
     """
     Asynchronously retrieve the current value of live positions.
 
@@ -112,12 +46,11 @@ async def get_current_value_of_live_positions(live_positions_df):
         - `live_positions_df`: A pandas DataFrame containing live position information.
 
     Note:
-        - `load_contract` and `get_pos_value` are assumed to be defined functions.
-        - `STATE` is assumed to be a global variable representing the address of the state contract.
+        - `load_contract` and `get_position_value` are assumed to be defined functions.
+        - `CONTRACT_ADDRESS` is assumed to be a global variable representing the address of the contract.
         - The function uses asyncio to concurrently fetch position values, improving performance.
 
     """
-    state = load_contract(STATE)
     pos_list = live_positions_df[['market', 'owner.id', 'position_id']].values.tolist()
     values = []
     batch_size = 50
@@ -130,13 +63,13 @@ async def get_current_value_of_live_positions(live_positions_df):
             index_upper = len(pos_list)
         curr_post_list = pos_list[index_lower:index_upper]
         values.extend(
-            await asyncio.gather(*[get_pos_value(state, pos) for pos in curr_post_list])
+            await asyncio.gather(*[blockchain_client.get_position_value(pos) for pos in curr_post_list])
         )
         await asyncio.sleep(5)
     return values
 
 
-async def process_live_positions(live_positions):
+async def process_live_positions(blockchain_client, live_positions):
     """
     Asynchronously process live positions data.
 
@@ -163,7 +96,7 @@ async def process_live_positions(live_positions):
         live_positions_df[~live_positions_df['market'].isin(AVAILABLE_MARKETS)].index,
         inplace = True
     )
-    values = await get_current_value_of_live_positions(live_positions_df)
+    values = await get_current_value_of_live_positions(blockchain_client, live_positions_df)
     values = [v / MINT_DIVISOR for v in values]
     live_positions_df['value'] = values
     live_positions_df['upnl'] = live_positions_df['value'] - live_positions_df['collateral_rem']
@@ -248,7 +181,7 @@ def set_metrics(live_positions_df_with_curr_values):
     metrics['upnl_pct_gauge'].labels(market=ALL_MARKET_LABEL).set(upnl_total / collateral_total)
 
 
-async def query_upnl(subgraph_client, stop_at_iteration=math.inf):
+async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.inf):
     """
     Asynchronously query unrealized profit and loss (UPNL) metrics from the subgraph.
 
@@ -282,9 +215,6 @@ async def query_upnl(subgraph_client, stop_at_iteration=math.inf):
     """
     print('[upnl] Starting query...')
 
-    print('[upnl] Connecting to arbitrum network...')
-    network.connect('arbitrum-main')
-
     set_metrics_to_nan()
     try:
         iteration = 0
@@ -294,7 +224,7 @@ async def query_upnl(subgraph_client, stop_at_iteration=math.inf):
         live_positions = subgraph_client.get_all_live_positions()
         # write_to_json(live_positions, 'live_positions.json')
         print('[upnl] Getting live positions current value from blockchain...')
-        live_positions_df_with_curr_values = await process_live_positions(live_positions)
+        live_positions_df_with_curr_values = await process_live_positions(blockchain_client, live_positions)
         # write_to_json(live_positions_df_with_curr_values.to_dict(orient="records"), 'live_positions_with_current_values.json')
         print('[upnl] Calculating upnl metrics...')
         set_metrics(live_positions_df_with_curr_values)
@@ -310,7 +240,7 @@ async def query_upnl(subgraph_client, stop_at_iteration=math.inf):
 
                 # Fetch all live positions so far from the subgraph
                 live_positions = subgraph_client.get_all_live_positions()
-                live_positions_df_with_curr_values = await process_live_positions(live_positions)
+                live_positions_df_with_curr_values = await process_live_positions(blockchain_client, live_positions)
                 set_metrics(live_positions_df_with_curr_values)
 
                 # Increment iteration
@@ -333,7 +263,8 @@ async def query_upnl(subgraph_client, stop_at_iteration=math.inf):
 
 
 subgraph_client = SubgraphClient()
-thread = threading.Thread(target=asyncio.run, args=(query_upnl(subgraph_client),))
+blockchain_client = BlockchainClient()
+thread = threading.Thread(target=asyncio.run, args=(query_upnl(subgraph_client, blockchain_client),))
 
 
 if __name__ == '__main__':
