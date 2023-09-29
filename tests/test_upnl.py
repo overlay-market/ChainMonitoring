@@ -83,6 +83,138 @@ INITIAL_LIVE_POSITIONS_DF = pd.DataFrame([
 ])
 
 
+def mock_get_position_value(*args, **kwargs):
+    return [
+    {
+        'timestamp': '1695522039',
+        'collateral': 0.08,
+        'id': '0x833ba1a942dc6d33bc3e6959637ae00e0cdcb20b-0xe7',
+        'position.currentOi': 0.008966965413095943,
+        'position.fractionUnwound': 0.0,
+        'owner.id': '0x4298868b068024d5868502beb075eea0ec28909c',
+        'market': '0x833ba1a942dc6d33bc3e6959637ae00e0cdcb20b',
+        'position_id': 231,
+        'collateral_rem': 0.08
+    },
+    {
+        'timestamp': '1694923135',
+        'collateral': 0.15,
+        'id': '0x33659282d39e62b62060c3f9fb2230e97db15f1e-0xf8',
+        'position.currentOi': 0.13712104424055888,
+        'position.fractionUnwound': 0.0,
+        'owner.id': '0xa8118f0f761eaaf894fb3d54443c9622e191e32f',
+        'market': '0x33659282d39e62b62060c3f9fb2230e97db15f1e',
+        'position_id': 248,
+        'collateral_rem': 0.15
+    },
+    {
+        'timestamp': '1694719037',
+        'collateral': 0.001295,
+        'id': '0x833ba1a942dc6d33bc3e6959637ae00e0cdcb20b-0xe6',
+        'position.currentOi': 0.000691142796476363,
+        'position.fractionUnwound': 0.0,
+        'owner.id': '0x85f66dbe1ed470a091d338cfc7429aa871720283',
+        'market': '0x833ba1a942dc6d33bc3e6959637ae00e0cdcb20b',
+        'position_id': 230,
+        'collateral_rem': 0.001295
+    },
+    {
+        'timestamp': '1694714616',
+        'collateral': 10.167208,
+        'id': '0x7c65c99ba1edfc94c535b7aa2d72b0f7357a676b-0x1e',
+        'position.currentOi': 0.23266259092516534,
+        'position.fractionUnwound': 0.0,
+        'owner.id': '0xfde3b96ad8d5f8116c4e646909afbed4a6104004',
+        'market': '0x7c65c99ba1edfc94c535b7aa2d72b0f7357a676b',
+        'position_id': 30,
+        'collateral_rem': 10.167208
+    },
+    {
+        'timestamp': '1694697487',
+        'collateral': 14.0,
+        'id': '0xc28350047d006ed387b0f210d4ea3218137a8a38-0x3c4',
+        'position.currentOi': 0.000898581181018426,
+        'position.fractionUnwound': 0.0,
+        'owner.id': '0x27a86abf8ddcb96ce1b822eb883fd03d795de462',
+        'market': '0xc28350047d006ed387b0f210d4ea3218137a8a38',
+        'position_id': 964,
+        'collateral_rem': 14.0
+    },
+    {
+        'timestamp': '1694398139',
+        'collateral': 0.38,
+        'id': '0xc28350047d006ed387b0f210d4ea3218137a8a38-0x3c2',
+        'position.currentOi': 1.4780077650657e-05,
+        'position.fractionUnwound': 0.0,
+        'owner.id': '0x6331351a6ee4e4684bdce0d622397a806c06d163',
+        'market': '0xc28350047d006ed387b0f210d4ea3218137a8a38',
+        'position_id': 962,
+        'collateral_rem': 0.38
+    },
+    {
+        'timestamp': '1694098372',
+        'collateral': 0.3,
+        'id': '0xc28350047d006ed387b0f210d4ea3218137a8a38-0x3c1',
+        'position.currentOi': 4.6664547777814e-05,
+        'position.fractionUnwound': 0.0,
+        'owner.id': '0x143b5d7e1a11b5dc301d97a51264eb73dd5a37ec',
+        'market': '0xc28350047d006ed387b0f210d4ea3218137a8a38',
+        'position_id': 961,
+        'collateral_rem': 0.3
+    },
+    {
+        'timestamp': '1694066759',
+        'collateral': 10.0,
+        'id': '0x02e5938904014901c96f534b063ec732ea3b48d5-0x154',
+        'position.currentOi': 4.094339038344929,
+        'position.fractionUnwound': 0.0,
+        'owner.id': '0xf9107317b0ff77ed5b7adea15e50514a3564002b',
+        'market': '0x02e5938904014901c96f534b063ec732ea3b48d5',
+        'position_id': 340,
+        'collateral_rem': 10.0
+    },
+    {
+        'timestamp': '1694012383',
+        'collateral': 20.0,
+        'id': '0x7c65c99ba1edfc94c535b7aa2d72b0f7357a676b-0x1c',
+        'position.currentOi': 0.4868718099166741,
+        'position.fractionUnwound': 0.0,
+        'owner.id': '0x27014500207436f0395ab6222c7aa66abbb816d2',
+        'market': '0x7c65c99ba1edfc94c535b7aa2d72b0f7357a676b',
+        'position_id': 28,
+        'collateral_rem': 20.0
+    },
+    {
+        'timestamp': '1693930014',
+        'collateral': 500.0,
+        'id': '0xc28350047d006ed387b0f210d4ea3218137a8a38-0x3c0',
+        'position.currentOi': 0.0193920734463421,
+        'position.fractionUnwound': 0.0,
+        'owner.id': '0x27014500207436f0395ab6222c7aa66abbb816d2',
+        'market': '0xc28350047d006ed387b0f210d4ea3218137a8a38',
+        'position_id': 960,
+        'collateral_rem': 500.0
+    }
+]
+
+def mock_get_all_live_positions(*args, **kwargs):
+    return [{'timestamp': '1695522039', 'collateral': 0.08, 'id': '0x833ba1a942dc6d33bc3e6959637ae00e0cdcb20b-0xe7', 'position.currentOi': 0.008966965413095943, 'position.fractionUnwound': 0.0, 'owner.id': '0x4298868b068024d5868502beb075eea0ec28909c', 'market': '0x833ba1a942dc6d33bc3e6959637ae00e0cdcb20b', 'position_id': 231, 'collateral_rem': 0.08}, {'timestamp': '1694923135', 'collateral': 0.15, 'id': '0x33659282d39e62b62060c3f9fb2230e97db15f1e-0xf8', 'position.currentOi': 0.13712104424055888, 'position.fractionUnwound': 0.0, 'owner.id': '0xa8118f0f761eaaf894fb3d54443c9622e191e32f', 'market': '0x33659282d39e62b62060c3f9fb2230e97db15f1e', 'position_id': 248, 'collateral_rem': 0.15}, {'timestamp': '1694719037', 'collateral': 0.001295, 'id': '0x833ba1a942dc6d33bc3e6959637ae00e0cdcb20b-0xe6', 'position.currentOi': 0.000691142796476363, 'position.fractionUnwound': 0.0, 'owner.id': '0x85f66dbe1ed470a091d338cfc7429aa871720283', 'market': '0x833ba1a942dc6d33bc3e6959637ae00e0cdcb20b', 'position_id': 230, 'collateral_rem': 0.001295}, {'timestamp': '1694714616', 'collateral': 10.167208, 'id': '0x7c65c99ba1edfc94c535b7aa2d72b0f7357a676b-0x1e', 'position.currentOi': 0.23266259092516534, 'position.fractionUnwound': 0.0, 'owner.id': '0xfde3b96ad8d5f8116c4e646909afbed4a6104004', 'market': '0x7c65c99ba1edfc94c535b7aa2d72b0f7357a676b', 'position_id': 30, 'collateral_rem': 10.167208}, {'timestamp': '1694697487', 'collateral': 14.0, 'id': '0xc28350047d006ed387b0f210d4ea3218137a8a38-0x3c4', 'position.currentOi': 0.000898581181018426, 'position.fractionUnwound': 0.0, 'owner.id': '0x27a86abf8ddcb96ce1b822eb883fd03d795de462', 'market': '0xc28350047d006ed387b0f210d4ea3218137a8a38', 'position_id': 964, 'collateral_rem': 14.0}, {'timestamp': '1694398139', 'collateral': 0.38, 'id': '0xc28350047d006ed387b0f210d4ea3218137a8a38-0x3c2', 'position.currentOi': 1.4780077650657e-05, 'position.fractionUnwound': 0.0, 'owner.id': '0x6331351a6ee4e4684bdce0d622397a806c06d163', 'market': '0xc28350047d006ed387b0f210d4ea3218137a8a38', 'position_id': 962, 'collateral_rem': 0.38}, {'timestamp': '1694098372', 'collateral': 0.3, 'id': '0xc28350047d006ed387b0f210d4ea3218137a8a38-0x3c1', 'position.currentOi': 4.6664547777814e-05, 'position.fractionUnwound': 0.0, 'owner.id': '0x143b5d7e1a11b5dc301d97a51264eb73dd5a37ec', 'market': '0xc28350047d006ed387b0f210d4ea3218137a8a38', 'position_id': 961, 'collateral_rem': 0.3}, {'timestamp': '1694066759', 'collateral': 10.0, 'id': '0x02e5938904014901c96f534b063ec732ea3b48d5-0x154', 'position.currentOi': 4.094339038344929, 'position.fractionUnwound': 0.0, 'owner.id': '0xf9107317b0ff77ed5b7adea15e50514a3564002b', 'market': '0x02e5938904014901c96f534b063ec732ea3b48d5', 'position_id': 340, 'collateral_rem': 10.0}, {'timestamp': '1694012383', 'collateral': 20.0, 'id': '0x7c65c99ba1edfc94c535b7aa2d72b0f7357a676b-0x1c', 'position.currentOi': 0.4868718099166741, 'position.fractionUnwound': 0.0, 'owner.id': '0x27014500207436f0395ab6222c7aa66abbb816d2', 'market': '0x7c65c99ba1edfc94c535b7aa2d72b0f7357a676b', 'position_id': 28, 'collateral_rem': 20.0}, {'timestamp': '1693930014', 'collateral': 500.0, 'id': '0xc28350047d006ed387b0f210d4ea3218137a8a38-0x3c0', 'position.currentOi': 0.0193920734463421, 'position.fractionUnwound': 0.0, 'owner.id': '0x27014500207436f0395ab6222c7aa66abbb816d2', 'market': '0xc28350047d006ed387b0f210d4ea3218137a8a38', 'position_id': 960, 'collateral_rem': 500.0}]
+
+def mock_get_value_of_positions(*args, **kwargs):
+    return [
+        82623814512343819,
+        163253970385831018,
+        1081470426112440,
+        9140009436599549710,
+        13920732590785406085,
+        389367319205678709,
+        258093092577246100,
+        17847292060567843830,
+        20152563204109859922,
+        484782568476006485841
+    ]
+
+
 class TestUpnlMetric(unittest.IsolatedAsyncioTestCase):
 
     def test_non_empty_live_positions(self):
@@ -125,7 +257,7 @@ class TestUpnlMetric(unittest.IsolatedAsyncioTestCase):
             upnl_allmarket
         )
 
-    def test_no_live_positsions(self):
+    def test_no_live_positions(self):
         set_metrics(pd.DataFrame([]))
         upnl_allmarket =  REGISTRY.get_sample_value(
             'upnl',
@@ -139,10 +271,32 @@ class TestUpnlMetric(unittest.IsolatedAsyncioTestCase):
         mock_subgraph_client.get_all_live_positions.side_effect = Exception(
             'Subgraph API returned empty data'
         )
-        await query_upnl(mock_subgraph_client, 1)
+        
+        mock_blockchain_client = MagicMock()
+        mock_blockchain_client.connect_to_network.side_effect = None
+
+        await query_upnl(mock_subgraph_client, mock_blockchain_client, 1)
         upnl_allmarket =  REGISTRY.get_sample_value(
             'upnl',
             labels={'market': ALL_MARKET_LABEL}
         )
         print('upnl_allmarket', upnl_allmarket)
         self.assertTrue(math.isnan(upnl_allmarket))
+
+    async def test_blockchain_client(self):
+        mock_subgraph_client = MagicMock()
+        mock_subgraph_client.get_all_live_positions.side_effect = MagicMock(
+            side_effect=mock_get_all_live_positions)
+
+        mock_blockchain_client = MagicMock()
+        mock_blockchain_client.connect_to_network.side_effect = None
+        mock_blockchain_client.get_value_of_positions.side_effect = AsyncMock(
+            side_effect=mock_get_value_of_positions)
+
+        await query_upnl(mock_subgraph_client, mock_blockchain_client, 1)
+        upnl_allmarket =  REGISTRY.get_sample_value(
+            'upnl',
+            labels={'market': ALL_MARKET_LABEL}
+        )
+        print('upnl_allmarket', upnl_allmarket)
+        self.assertEqual(upnl_allmarket, -8.340917564823652)

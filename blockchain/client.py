@@ -1,3 +1,6 @@
+import math
+import asyncio
+
 from web3.exceptions import ContractLogicError
 from brownie import Contract, web3, network
 from dank_mids.brownie_patch import patch_contract
@@ -7,7 +10,7 @@ from constants import CONTRACT_ADDRESS
 
 
 class ResourceClient:
-    def __init__(self):
+    def connect_to_network(self):
         print('Connecting to arbitrum network...')
         network.connect('arbitrum-main')
         self.contract = self.load_contract(CONTRACT_ADDRESS)
@@ -67,11 +70,26 @@ class ResourceClient:
             - The `contract.value.coroutine` method is assumed to be an asynchronous method for fetching position values.
 
         """
-        print('pos!!', pos)
         try:
             pos_value = await self.contract.value.coroutine(pos[0], pos[1], pos[2])
-            print('pos_value', pos_value)
             return pos_value
         except ContractLogicError as e:
             print(e)
             return
+    
+    async def get_value_of_positions(self, positions):
+        values = []
+        batch_size = 50
+        # Get current value of live positions by batches
+        for i in range(math.ceil(len(positions) / batch_size)):
+            index_lower = i * batch_size
+            index_upper = (i + 1) * batch_size
+            print(f'[upnl] fetching values for batch {index_upper} out of {len(positions)}...')
+            if index_upper > len(positions):
+                index_upper = len(positions)
+            curr_post_list = positions[index_lower:index_upper]
+            values.extend(
+                await asyncio.gather(*[self.get_position_value(pos) for pos in curr_post_list])
+            )
+            await asyncio.sleep(5)
+        return values

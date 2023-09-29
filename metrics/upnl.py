@@ -29,46 +29,6 @@ def write_to_json(data, filename):
         json.dump({"data": data}, json_file, indent=4)
 
 
-async def get_current_value_of_live_positions(blockchain_client, live_positions_df):
-    """
-    Asynchronously retrieve the current value of live positions.
-
-    Args:
-        live_positions_df (pandas.DataFrame): DataFrame containing live position information.
-
-    Returns:
-        list: A list of position values.
-
-    This asynchronous function retrieves the current value of live positions by batches using an Ethereum smart contract
-    and returns a list of the values.
-
-    Args Details:
-        - `live_positions_df`: A pandas DataFrame containing live position information.
-
-    Note:
-        - `load_contract` and `get_position_value` are assumed to be defined functions.
-        - `CONTRACT_ADDRESS` is assumed to be a global variable representing the address of the contract.
-        - The function uses asyncio to concurrently fetch position values, improving performance.
-
-    """
-    pos_list = live_positions_df[['market', 'owner.id', 'position_id']].values.tolist()
-    values = []
-    batch_size = 50
-    # Get current value of live positions by batches
-    for i in range(math.ceil(len(pos_list) / batch_size)):
-        index_lower = i * batch_size
-        index_upper = (i + 1) * batch_size
-        print(f'[upnl] fetching values for batch {index_upper} out of {len(pos_list)}...')
-        if index_upper > len(pos_list):
-            index_upper = len(pos_list)
-        curr_post_list = pos_list[index_lower:index_upper]
-        values.extend(
-            await asyncio.gather(*[blockchain_client.get_position_value(pos) for pos in curr_post_list])
-        )
-        await asyncio.sleep(5)
-    return values
-
-
 async def process_live_positions(blockchain_client, live_positions):
     """
     Asynchronously process live positions data.
@@ -96,7 +56,9 @@ async def process_live_positions(blockchain_client, live_positions):
         live_positions_df[~live_positions_df['market'].isin(AVAILABLE_MARKETS)].index,
         inplace = True
     )
-    values = await get_current_value_of_live_positions(blockchain_client, live_positions_df)
+    # values = await get_current_value_of_live_positions(blockchain_client, live_positions_df)
+    positions = live_positions_df[['market', 'owner.id', 'position_id']].values.tolist()
+    values = await blockchain_client.get_value_of_positions(positions)
     values = [v / MINT_DIVISOR for v in values]
     live_positions_df['value'] = values
     live_positions_df['upnl'] = live_positions_df['value'] - live_positions_df['collateral_rem']
@@ -214,7 +176,7 @@ async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.
 
     """
     print('[upnl] Starting query...')
-
+    blockchain_client.connect_to_network()
     set_metrics_to_nan()
     try:
         iteration = 0
@@ -222,6 +184,7 @@ async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.
         # Fetch all live positions so far from the subgraph
         print('[upnl] Getting live positions from subgraph...')
         live_positions = subgraph_client.get_all_live_positions()
+        print('live_positions', len(live_positions))
         # write_to_json(live_positions, 'live_positions.json')
         print('[upnl] Getting live positions current value from blockchain...')
         live_positions_df_with_curr_values = await process_live_positions(blockchain_client, live_positions)
