@@ -1,5 +1,6 @@
 import math
 import asyncio
+from typing import List, Any
 
 from web3.exceptions import ContractLogicError
 from brownie import Contract, web3, network
@@ -15,7 +16,7 @@ class ResourceClient:
         network.connect('arbitrum-main')
         self.contract = self.load_contract(CONTRACT_ADDRESS)
 
-    def load_contract(self, address):
+    def load_contract(self, address: str) -> Contract:
         """
         Load a contract using the provided address.
 
@@ -47,7 +48,7 @@ class ResourceClient:
         dank_contract = patch_contract(contract, dank_w3)
         return dank_contract
 
-    async def get_position_value(self, pos):
+    async def get_position_value(self, pos: tuple) -> Any:
         """
         Asynchronously retrieve the value of a position from the contract.
 
@@ -77,7 +78,23 @@ class ResourceClient:
             print(e)
             return
     
-    async def get_value_of_positions(self, positions):
+    async def get_value_of_positions(self, positions: List) -> List:
+        """
+        Get the current value of a list of positions.
+
+        Args:
+            positions (List): A list of positions to retrieve values for.
+
+        Returns:
+            List: A list of values corresponding to the provided positions.
+
+        Raises:
+            Any exceptions raised during the asynchronous gathering of position values.
+
+        Example:
+            positions = [...]  # List of positions
+            values = await get_value_of_positions(positions)
+        """
         values = []
         batch_size = 50
         # Get current value of live positions by batches

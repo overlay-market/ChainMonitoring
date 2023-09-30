@@ -1,8 +1,8 @@
 import json
 import pandas as pd
 import requests
-from pydantic import BaseModel, ValidationError
-from typing import List, Dict, Optional
+from pydantic import ValidationError
+from typing import List, Dict, Union
 
 from constants import SUBGRAPH_API_KEY
 from .models import Position, Build
@@ -14,7 +14,7 @@ MODEL_MAP = {
 }
 
 
-def extract_live_positions(builds):
+def extract_live_positions(builds: List[Dict]):
     builds_df = pd.json_normalize(builds)
     # Get market contract address and position id in separate columns
     builds_df[['market', 'position_id']] = builds_df['id'].str.split('-', expand=True)
@@ -41,7 +41,9 @@ class ResourceClient:
     PAGE_SIZE = 500
 
     @staticmethod
-    def validate_response(response, list_key):
+    def validate_response(
+        response: requests.Response, list_key: str
+    ) -> List[Dict[str, Union[str, int, float]]]:
         """
         Validate the response from a subgraph API.
 
@@ -84,7 +86,7 @@ class ResourceClient:
         filters: Dict,
         includes: List[str],
         nested_includes: Dict
-    ):
+    ) -> str:
         """
         Build a GraphQL query string.
 
@@ -128,7 +130,9 @@ class ResourceClient:
         '''
         return query
     
-    def build_query_for_positions(self, where: Dict, page_size: int):
+    def build_query_for_positions(
+        self, where: Dict, page_size: int
+    ) -> str:
         query = self.build_query(
             'positions',
             where=where,
@@ -140,10 +144,11 @@ class ResourceClient:
             includes=['id', 'createdAtTimestamp', 'mint'],
             nested_includes={ 'market': ['id'] }
         )
-        # print('positions query!!', query)
         return query
 
-    def build_query_for_builds(self, where: Dict, page_size: int):
+    def build_query_for_builds(
+        self, where: Dict, page_size: int
+    ) -> str:
         query = self.build_query(
             'builds',
             where=where,
@@ -160,18 +165,22 @@ class ResourceClient:
         )
         return query
 
-    def get_positions(self, timestamp_lower, timestamp_upper, page_size=PAGE_SIZE):
-        all_positions = []
-        query = self.build_query_for_positions(
-             where={
+    from typing import List, Dict, Union
+
+    def get_positions(
+        self, timestamp_lower: int, timestamp_upper: int, page_size: int = PAGE_SIZE
+    ) -> List[Dict[str, Union[int, float, str]]]:
+        all_positions: List[Dict[str, Union[int, float, str]]] = []
+        query: str = self.build_query_for_positions(
+                where={
                 'createdAtTimestamp_gt': timestamp_lower,
                 'createdAtTimestamp_lt': timestamp_upper
             },
             page_size=page_size
         )
-        response = requests.post(self.URL, json={'query': query})
-        curr_positions = self.validate_response(response, 'positions')
-        page_count = 0
+        response: requests.Response = requests.post(self.URL, json={'query': query})
+        curr_positions: List[Dict[str, Union[int, float, str]]] = self.validate_response(response, 'positions')
+        page_count: int = 0
         while len(curr_positions) > 0:
             page_count += 1
             print(f'Fetching positions page # {page_count}')
@@ -188,11 +197,13 @@ class ResourceClient:
         
         return all_positions
 
-    def get_all_positions(self, page_size = PAGE_SIZE):
-        all_positions = []
-        query = self.build_query_for_positions(where={}, page_size=page_size)
-        response = requests.post(self.URL, json={'query': query})
-        curr_positions = self.validate_response(response, 'positions')
+    def get_all_positions(
+        self, page_size: int = PAGE_SIZE
+    ) -> List[Dict[str, Union[int, float, str]]]:
+        all_positions: List[Dict[str, Union[int, float, str]]] = []
+        query: str = self.build_query_for_positions(where={}, page_size=page_size)
+        response: requests.Response = requests.post(self.URL, json={'query': query})
+        curr_positions: List[Dict[str, Union[int, float, str]]] = self.validate_response(response, 'positions')
         while len(curr_positions) > 0:
             all_positions.extend(curr_positions)
             query = self.build_query_for_positions(
@@ -207,13 +218,15 @@ class ResourceClient:
         print('all_positions', len(all_positions))
         return all_positions
 
-    def get_all_live_positions(self, page_size=PAGE_SIZE):
-        live_positions = []
-        query = self.build_query_for_builds(where={}, page_size=page_size)
-        response = requests.post(self.URL, json={'query': query})
-        curr_builds = self.validate_response(response, 'builds')
-        curr_live_positions = extract_live_positions(curr_builds)
-        page_count = 0
+    def get_all_live_positions(
+        self, page_size: int = PAGE_SIZE
+    ) -> List[Dict[str, Union[int, float, str]]]:
+        live_positions: List[Dict[str, Union[int, float, str]]] = []
+        query: str = self.build_query_for_builds(where={}, page_size=page_size)
+        response: requests.Response = requests.post(self.URL, json={'query': query})
+        curr_builds: List[Dict[str, Union[int, float, str]]] = self.validate_response(response, 'builds')
+        curr_live_positions: List[Dict[str, Union[int, float, str]]] = extract_live_positions(curr_builds)
+        page_count: int = 0
         while True:
             page_count += 1
             print(f'Fetching builds page # {page_count}')
