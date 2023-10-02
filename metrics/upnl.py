@@ -149,6 +149,7 @@ async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.
 
     Args:
         subgraph_client: An instance of the subgraph client used for querying data.
+        blockchain_client: An instance of the blockchain client used for querying data.
         stop_at_iteration (int, optional): The maximum number of iterations to run the query. Default is math.inf.
 
     Returns:
@@ -164,10 +165,6 @@ async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.
         4. Sets UPNL metrics based on the live positions and current values.
         5. Runs iterations to update UPNL metrics.
         6. Handles exceptions and resets metrics if an error occurs.
-
-    Args Details:
-        - `subgraph_client`: An instance of the subgraph client used for querying data.
-        - `stop_at_iteration`: The maximum number of iterations to run the query (default is math.inf).
 
     Note:
         - `process_live_positions`, `set_metrics`, and `set_metrics_to_nan` are defined functions.
