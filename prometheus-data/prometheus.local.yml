@@ -1,0 +1,24 @@
+global:
+  scrape_interval:     5s
+  evaluation_interval: 30s
+
+scrape_configs:
+- job_name: my-application
+  honor_labels: true
+  metrics_path: /
+  static_configs:
+  - targets: ['chain-monitoring:8000']
+- job_name: siwa-monitoring
+  honor_labels: true
+  metrics_path: /metrics
+  static_configs:
+  - targets: ['docker.for.mac.localhost:81']
+
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - 'alertmanager:9093'  # Replace with your Alertmanager address
+
+# rule_files:
+#   - 'your_alert_rules.yml'

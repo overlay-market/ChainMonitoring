@@ -1,0 +1,45 @@
+version: "3"
+
+services:
+  prometheus:
+    container_name: prometheus-svc-2
+    image: prom/prometheus:latest
+    ports:
+      - "9091:9090"
+    command: --config.file=/etc/prometheus/prometheus.dev.yml
+    volumes:
+      - ./prometheus-data/prometheus.local.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus:/etc/prometheus
+  # chain-monitoring:
+  #   build:
+  #     context: .
+  #   container_name: chain-monitoring
+  #   image: chain-monitoring
+  #   ports:
+  #     - "81:8000"
+  #   env_file: .env
+  #   environment:
+  #     SUBGRAPH_API_KEY: ${SUBGRAPH_API_KEY}
+  grafana:
+    image: grafana/grafana
+    user: "0:0"
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_BASIC_ENABLED=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+  grafana-dashboards:
+    image: alpine:3.10
+    depends_on:
+      - grafana
+    volumes:
+      - ./grafana-data:/grafana
+    command: >
+      /bin/sh -c "
+        apk add --no-cache curl
+        echo 'waiting for grafana'
+        sleep 40s
+        cd /grafana
+        curl --request POST http://grafana:3000/api/datasources --header 'Content-Type: application/json' -d @datasources.json
+        curl --request POST http://grafana:3000/api/dashboards/db --header 'Content-Type: application/json' -d @dashboard.json"
