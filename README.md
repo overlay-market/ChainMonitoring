@@ -13,6 +13,8 @@ to-do
 ## Prometheus Metrics
 This is a running list of all the metrics being monitored in this project.
 1. `ovl_token_minted` - Number of OVL tokens minted
+2. `upnl` - Unrealized profit and loss
+3. `csgo_index` - Current CSGO Skins Index; this metric is calculated from the Siwa app
    
 ### How to add new metrics
 - to-do
