@@ -6,7 +6,7 @@ services:
     image: prom/prometheus:latest
     ports:
       - "9091:9090"
-    command: --config.file=/etc/prometheus/prometheus.dev.yml
+    command: --config.file=/etc/prometheus/prometheus.local.yml
     volumes:
       - ./prometheus-data/prometheus.local.yml:/etc/prometheus/prometheus.yml
       - ./prometheus:/etc/prometheus
