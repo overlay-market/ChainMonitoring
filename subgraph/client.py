@@ -165,8 +165,6 @@ class ResourceClient:
         )
         return query
 
-    from typing import List, Dict, Union
-
     def get_positions(
         self, timestamp_lower: int, timestamp_upper: int, page_size: int = PAGE_SIZE
     ) -> List[Dict[str, Union[int, float, str]]]:
