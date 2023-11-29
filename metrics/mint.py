@@ -10,9 +10,11 @@ from constants import (
     AVAILABLE_MARKETS,
     ALL_MARKET_LABEL,
     QUERY_INTERVAL,
-    MINT_DIVISOR
+    MINT_DIVISOR,
+    TELEGRAM_BOT_TOKEN,
+    TELEGRAM_CHAT_ID,
 )
-from utils import format_datetime
+from utils import format_datetime, send_telegram_message, CMThread
 from prometheus_metrics import metrics
 from subgraph.client import ResourceClient as SubgraphClient
 
@@ -169,6 +171,7 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
         - `QUERY_INTERVAL` is a global variable.
     """
     print('[ovl_token_minted] Starting query...')
+    # 1/0
     set_metrics_to_nan()
     try:
         iteration = 0
@@ -195,7 +198,6 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
                     '[ovl_token_minted] timestamp_upper',
                     format_datetime(timestamp_upper)
                 )
-                
                 if should_initialize_metrics:
                     all_positions = subgraph_client.get_all_positions()
                     initialize_metrics(all_positions)
@@ -218,13 +220,21 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
                 print(f'[ovl_token_minted] new positions', len(positions))
                 timestamp_lower, timestamp_upper = query_single_time_window(
                     positions, timestamp_lower)
-                # if iteration == 10:
+                # if iteration == 1:
                 #     1 / 0
             except Exception as e:
-                print(
+                error_message = (
                     f"[ovl_token_minted] An error occurred on iteration "
                     f"{iteration} timestamp_lower "
-                    f"{format_datetime(timestamp_lower)}:", e)
+                    f"{format_datetime(timestamp_lower)}: {e}"
+                )
+                traceback_str = traceback.format_exc()
+                send_telegram_message(
+                    TELEGRAM_BOT_TOKEN,
+                    TELEGRAM_CHAT_ID,
+                    f"[ERROR]:\n{error_message}.\n\n[TRACEBACK]\n {traceback_str}"
+                )
+                print(error_message)
                 traceback.print_exc()
                 set_metrics_to_nan()
                 should_initialize_metrics = True
@@ -236,9 +246,17 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
                 time.sleep(QUERY_INTERVAL)
                 
     except Exception as e:
-        print(f"[ovl_token_minted] An error occurred:", e)
+        error_message = f"[ovl_token_minted] An error occurred: {e}"
+        traceback_str = traceback.format_exc()
+        send_telegram_message(
+            TELEGRAM_BOT_TOKEN,
+            TELEGRAM_CHAT_ID,
+            f"[ERROR]:\n{error_message}.\n\n[TRACEBACK]\n {traceback_str}"
+        )
+        print(error_message)
         traceback.print_exc()
         set_metrics_to_nan()
 
 subgraph_client = SubgraphClient()
-thread = threading.Thread(target=query_mint, args=(subgraph_client,))
+# thread = threading.Thread(target=query_mint, args=(subgraph_client,))
+thread = CMThread(target=query_mint, args=(subgraph_client,))

@@ -1,7 +1,6 @@
 import datetime
 import json
 import math
-import threading
 import traceback
 
 import asyncio
@@ -13,8 +12,11 @@ from constants import (
     ALL_MARKET_LABEL,
     QUERY_INTERVAL,
     MINT_DIVISOR,
-    CONTRACT_ADDRESS
+    CONTRACT_ADDRESS,
+    TELEGRAM_BOT_TOKEN,
+    TELEGRAM_CHAT_ID
 )
+from utils import send_telegram_message, CMThread
 from prometheus_metrics import metrics
 from blockchain.client import ResourceClient as BlockchainClient
 from subgraph.client import ResourceClient as SubgraphClient
@@ -173,6 +175,7 @@ async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.
 
     """
     print('[upnl] Starting query...')
+    # 1/0
     blockchain_client.connect_to_network()
     set_metrics_to_nan()
     try:
@@ -185,7 +188,10 @@ async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.
         # write_to_json(live_positions, 'live_positions.json')
         print('[upnl] Getting live positions current value from blockchain...')
         live_positions_df_with_curr_values = await process_live_positions(blockchain_client, live_positions)
-        # write_to_json(live_positions_df_with_curr_values.to_dict(orient="records"), 'live_positions_with_current_values.json')
+        # write_to_json(
+        #     live_positions_df_with_curr_values.to_dict(orient="records"),
+        #     f"live_positions_with_current_values_{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.json"
+        # )
         print('[upnl] Calculating upnl metrics...')
         set_metrics(live_positions_df_with_curr_values)
 
@@ -211,21 +217,36 @@ async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.
                 # if iteration == 10:
                 #     1 / 0
             except Exception as e:
-                print(
+                error_message = (
                     f"[upnl] An error occurred on iteration "
                     f"{iteration} timestamp_start "
-                    f"{datetime.datetime.utcfromtimestamp(timestamp_start).strftime('%Y-%m-%d %H:%M:%S')}:", e)
+                    f"{datetime.datetime.utcfromtimestamp(timestamp_start).strftime('%Y-%m-%d %H:%M:%S')}: {e}"
+                )
+                traceback_str = traceback.format_exc()
+                send_telegram_message(
+                    TELEGRAM_BOT_TOKEN,
+                    TELEGRAM_CHAT_ID,
+                    f"[ERROR]:\n{error_message}.\n\n[TRACEBACK]\n {traceback_str}"
+                )
+                print(error_message)
                 traceback.print_exc()
     except Exception as e:
-        print(f"[upnl] An error occurred:", e)
+        error_message = f"[upnl] An error occurred: {e}"
+        traceback_str = traceback.format_exc()
+        send_telegram_message(
+            TELEGRAM_BOT_TOKEN,
+            TELEGRAM_CHAT_ID,
+            f"[ERROR]:\n{error_message}.\n\n[TRACEBACK]\n {traceback_str}"
+        )
+        print(error_message)
         traceback.print_exc()
         set_metrics_to_nan()
 
 
 subgraph_client = SubgraphClient()
 blockchain_client = BlockchainClient()
-thread = threading.Thread(target=asyncio.run, args=(query_upnl(subgraph_client, blockchain_client),))
-
+# thread = threading.Thread(target=asyncio.run, args=(query_upnl(subgraph_client, blockchain_client),))
+thread = CMThread(target=asyncio.run, args=(query_upnl(subgraph_client, blockchain_client),))
 
 if __name__ == '__main__':
     asyncio.run(query_upnl)

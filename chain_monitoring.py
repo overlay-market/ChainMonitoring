@@ -16,7 +16,9 @@ if __name__ == '__main__':
 try:
     # Keep the main thread alive to let the threads run
     while True:
-        pass
+        # pass
+        thread_mint.send_exceptions_to_tg()
+        thread_upnl.send_exceptions_to_tg()
 except KeyboardInterrupt:
     # Terminate the threads when the main thread is interrupted (Ctrl+C)
     thread_mint.join()
