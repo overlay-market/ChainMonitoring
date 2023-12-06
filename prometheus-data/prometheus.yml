@@ -8,6 +8,11 @@ scrape_configs:
   metrics_path: /
   static_configs:
   - targets: ['chain-monitoring:8000']
+# - job_name: siwa-monitoring
+#   honor_labels: true
+#   metrics_path: /metrics
+#   static_configs:
+#   - targets: ['docker.for.mac.localhost:81']
 
 # alerting:
 #   alertmanagers:
@@ -17,3 +22,9 @@ scrape_configs:
 
 # rule_files:
 #   - 'your_alert_rules.yml'
+
+# remote_write:
+#   - url: 'https://prometheus-prod-13-prod-us-east-0.grafana.net/api/prom/push'
+#     basic_auth:
+#       username: 1264667
+#       password: glc_eyJvIjoiOTc5NTUxIiwibiI6InN0YWNrLTc3ODM4My1pbnRlZ3JhdGlvbi1vdmVybGF5LXByb21ldGhldXMiLCJrIjoiODcyWTQzRWQyQ3g0SVdzZGgzMzBscHdjIiwibSI6eyJyIjoicHJvZC11cy1lYXN0LTAifX0=
