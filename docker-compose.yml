@@ -3,10 +3,14 @@ version: "3"
 services:
   prometheus:
     container_name: prometheus-svc-2
-    image: prom/prometheus
+    image: prom/prometheus:latest
     ports:
       - "9091:9090"
-    command: --config.file=/etc/prometheus/prometheus.yml
+    command: 
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=5m
+      - --storage.tsdb.retention=5m
+      - --web.enable-admin-api
     volumes:
       - ./prometheus-data/prometheus.yml:/etc/prometheus/prometheus.yml
   chain-monitoring:
@@ -14,11 +18,14 @@ services:
       context: .
     container_name: chain-monitoring
     image: chain-monitoring
+    restart: on-failure:5
     ports:
       - "81:8000"
     env_file: .env
     environment:
       SUBGRAPH_API_KEY: ${SUBGRAPH_API_KEY}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
   grafana:
     image: grafana/grafana
     ports:
@@ -37,7 +44,7 @@ services:
       /bin/sh -c "
         apk add --no-cache curl
         echo 'waiting for grafana'
-        sleep 20s
+        sleep 40s
         cd /grafana
         curl --request POST http://grafana:3000/api/datasources --header 'Content-Type: application/json' -d @datasources.json
         curl --request POST http://grafana:3000/api/dashboards/db --header 'Content-Type: application/json' -d @dashboard.json"
