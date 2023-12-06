@@ -8,8 +8,8 @@ services:
       - "9091:9090"
     command: 
       - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.retention.time=5m
-      - --storage.tsdb.retention=5m
+      - --storage.tsdb.retention.time=1d
+      - --storage.tsdb.retention=1d
       - --web.enable-admin-api
     volumes:
       - ./prometheus-data/prometheus.yml:/etc/prometheus/prometheus.yml
