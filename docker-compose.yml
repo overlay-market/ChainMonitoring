@@ -13,6 +13,7 @@ services:
       - --web.enable-admin-api
     volumes:
       - ./prometheus-data/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus_data:/prometheus
   chain-monitoring:
     build:
       context: .
