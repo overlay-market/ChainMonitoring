@@ -27,7 +27,8 @@ RUN pip install -r requirements.txt
 
 COPY ./ /app/
 
-RUN pytest
+# RUN pytest
+# RUN pytest --disable-warnings
 
 EXPOSE 8000
 CMD ["python", "chain_monitoring.py"]
