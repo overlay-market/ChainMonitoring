@@ -13,10 +13,8 @@ from constants import (
     QUERY_INTERVAL,
     MINT_DIVISOR,
     CONTRACT_ADDRESS,
-    TELEGRAM_BOT_TOKEN,
-    TELEGRAM_CHAT_ID
 )
-from utils import send_telegram_message, CMThread
+from utils import CMThread, handle_error
 from prometheus_metrics import metrics
 from blockchain.client import ResourceClient as BlockchainClient
 from subgraph.client import ResourceClient as SubgraphClient
@@ -222,22 +220,12 @@ async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.
                     f"{iteration} timestamp_start "
                     f"{datetime.datetime.utcfromtimestamp(timestamp_start).strftime('%Y-%m-%d %H:%M:%S')}: {e}"
                 )
-                traceback_str = traceback.format_exc()
-                send_telegram_message(
-                    TELEGRAM_BOT_TOKEN,
-                    TELEGRAM_CHAT_ID,
-                    f"[ERROR]:\n{error_message}.\n\n[TRACEBACK]\n {traceback_str}"
-                )
+                handle_error(error_message)
                 print(error_message)
                 traceback.print_exc()
     except Exception as e:
         error_message = f"[upnl] An error occurred: {e}"
-        traceback_str = traceback.format_exc()
-        send_telegram_message(
-            TELEGRAM_BOT_TOKEN,
-            TELEGRAM_CHAT_ID,
-            f"[ERROR]:\n{error_message}.\n\n[TRACEBACK]\n {traceback_str}"
-        )
+        handle_error(error_message)
         print(error_message)
         traceback.print_exc()
         set_metrics_to_nan()
@@ -245,8 +233,4 @@ async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.
 
 subgraph_client = SubgraphClient()
 blockchain_client = BlockchainClient()
-# thread = threading.Thread(target=asyncio.run, args=(query_upnl(subgraph_client, blockchain_client),))
 thread = CMThread(target=asyncio.run, args=(query_upnl(subgraph_client, blockchain_client),))
-
-if __name__ == '__main__':
-    asyncio.run(query_upnl)

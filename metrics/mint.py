@@ -168,7 +168,7 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
         - `QUERY_INTERVAL` is a global variable.
     """
     print('[ovl_token_minted] Starting query...')
-    # 1/0
+    # 1 / 0
     set_metrics_to_nan()
     try:
         iteration = 0
@@ -245,5 +245,4 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
         set_metrics_to_nan()
 
 subgraph_client = SubgraphClient()
-# thread = threading.Thread(target=query_mint, args=(subgraph_client,))
 thread = CMThread(target=query_mint, args=(subgraph_client,))
