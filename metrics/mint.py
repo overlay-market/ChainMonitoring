@@ -1,7 +1,6 @@
 import datetime
 import math
 import pandas as pd
-import threading
 import time
 import traceback
 
@@ -11,10 +10,8 @@ from constants import (
     ALL_MARKET_LABEL,
     QUERY_INTERVAL,
     MINT_DIVISOR,
-    TELEGRAM_BOT_TOKEN,
-    TELEGRAM_CHAT_ID,
 )
-from utils import format_datetime, send_telegram_message, CMThread
+from utils import format_datetime, CMThread, handle_error
 from prometheus_metrics import metrics
 from subgraph.client import ResourceClient as SubgraphClient
 
@@ -217,7 +214,7 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
                     for position in positions
                     if position['market']['id'] in AVAILABLE_MARKETS
                 ]
-                print(f'[ovl_token_minted] new positions', len(positions))
+                print('[ovl_token_minted] new positions', len(positions))
                 timestamp_lower, timestamp_upper = query_single_time_window(
                     positions, timestamp_lower)
                 # if iteration == 1:
@@ -228,12 +225,7 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
                     f"{iteration} timestamp_lower "
                     f"{format_datetime(timestamp_lower)}: {e}"
                 )
-                traceback_str = traceback.format_exc()
-                send_telegram_message(
-                    TELEGRAM_BOT_TOKEN,
-                    TELEGRAM_CHAT_ID,
-                    f"[ERROR]:\n{error_message}.\n\n[TRACEBACK]\n {traceback_str}"
-                )
+                handle_error(error_message)
                 print(error_message)
                 traceback.print_exc()
                 set_metrics_to_nan()
@@ -247,12 +239,7 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
                 
     except Exception as e:
         error_message = f"[ovl_token_minted] An error occurred: {e}"
-        traceback_str = traceback.format_exc()
-        send_telegram_message(
-            TELEGRAM_BOT_TOKEN,
-            TELEGRAM_CHAT_ID,
-            f"[ERROR]:\n{error_message}.\n\n[TRACEBACK]\n {traceback_str}"
-        )
+        handle_error(error_message)
         print(error_message)
         traceback.print_exc()
         set_metrics_to_nan()

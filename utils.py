@@ -34,6 +34,15 @@ def send_telegram_message(bot_token, chat_id, message):
         print(f"Failed to send message: {e}")
 
 
+def handle_error(error_message):
+    traceback_str = traceback.format_exc()
+    send_telegram_message(
+        TELEGRAM_BOT_TOKEN,
+        TELEGRAM_CHAT_ID,
+        f"[ERROR]:\n{error_message}.\n\n[TRACEBACK]\n {traceback_str}"
+    )
+
+
 class CMThread(threading.Thread):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
