@@ -1,2 +1,4 @@
 .env
 prometheus_data
+__pycache__
+prometheus_data
