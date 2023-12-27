@@ -28,12 +28,9 @@ class BaseMonitoringHandler:
     metrics: List[Metric] = []
     alert_rules: List[AlertRule] = []
 
-    def __init__(self, name, clients, metrics, **kwargs) -> None:
-        self.name = name
-        self.client = clients
-        self.metrics = metrics
-
+    def __init__(self) -> None:
         self.set_name()
+        self.set_clients()
         self.set_metrics()
 
     def set_name(self):
@@ -44,6 +41,6 @@ class BaseMonitoringHandler:
         
     def calculate_metrics(self):
         return [
-            {'name': metric.name, 'value': metric.calculate()}
+            {'name': metric.name, 'value': metric.calculate(**self.kwargs)}
             for metric in self.metrics
         ]
