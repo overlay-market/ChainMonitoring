@@ -43,3 +43,12 @@ class BaseMonitoringHandler:
             {'name': metric.name, 'value': metric.calculate(**self.kwargs)}
             for metric in self.metrics
         ]
+
+    def alert(self):
+        # Define alert logic here (green, orange, red)
+        self.calculate_metrics()
+        # Send alerts for green, orange, red
+
+    def run(self):
+        # TO-DO: run alert function every heartbeat sec
+        return
