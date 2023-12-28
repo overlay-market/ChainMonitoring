@@ -11,7 +11,7 @@ class Metric:
     labels = []
 
     def calculate(self, **kwargs):
-        return nan
+        raise NotImplementedError
 
 
 class AlertRule:
