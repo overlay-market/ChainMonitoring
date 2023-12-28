@@ -1,6 +1,6 @@
-from typing import List
 from subgraph.client import ResourceClient as SubgraphClient
-from math import nan
+from typing import List
+from utils import send_telegram_message
 
 class BaseResourceClient:
     name = ''
