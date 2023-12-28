@@ -25,6 +25,7 @@ class BaseMonitoringHandler:
     clients: List = [SubgraphClient(), ]
     metrics: List[Metric] = []
     alert_rules: List[AlertRule] = []
+    heartbeat: int  # seconds
 
     def __init__(self) -> None:
         self.set_name()
