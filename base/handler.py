@@ -1,6 +1,6 @@
 from typing import List
 from subgraph.client import ResourceClient as SubgraphClient
-
+from math import nan
 
 class BaseResourceClient:
     name = ''
@@ -8,12 +8,10 @@ class BaseResourceClient:
 
 class Metric:
     name = 'name_of_metric'
-
-    def __init__(self, name) -> None:
-        self.name = name
+    labels = []
 
     def calculate(self, **kwargs):
-        return 0
+        return nan
 
 
 class AlertRule:
