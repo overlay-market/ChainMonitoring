@@ -12,6 +12,7 @@ from constants import (
 
 class MintMetric(Metric):
     name = 'ovl_token_minted'
+    labels = ['market', ]
 
     def calculate(subgraph_client):
         all_positions = subgraph_client.get_all_positions()
