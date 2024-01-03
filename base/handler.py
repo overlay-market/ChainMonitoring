@@ -40,7 +40,10 @@ class BaseMonitoringHandler:
         
     def calculate_metrics(self):
         return [
-            {'name': metric.name, 'value': metric.calculate(**self.kwargs)}
+            {
+                'name': metric.name,
+                'value': metric.calculate(**self.kwargs)
+            }
             for metric in self.metrics
         ]
 
