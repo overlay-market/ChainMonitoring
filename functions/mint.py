@@ -42,6 +42,20 @@ class MintMetric(Metric):
 
 
 class Handler(BaseMonitoringHandler):
+
+    alert_rules = {
+        'red': {
+            'overmint': {
+                'overmint': 'ovl_token_minted > 100',
+            },
+        },
+        'green': {
+            'test_alert_green': 'ovl_token_minted <= 100 and ovl_token_minted >= 0',
+        },
+        'orange': {
+            'test_alert_orange': 'ovl_token_minted < 0',
+        },
+    }
     def __init__(self):
         super().__init__()
         self.kwargs = {
@@ -58,3 +72,25 @@ class Handler(BaseMonitoringHandler):
         self.metrics = [
             MintMetric,
         ]
+
+    def alert(self):
+        # Calculate metrics
+        calculated_metrics = self.calculate_metrics()
+        print('calculated_metrics!!', calculated_metrics)
+
+        # calculated_metrics = {
+        #     'ovl_token_minted': {
+        #         'value': {
+        #             'ALL': -805.7973282971279,
+        #             'LINK / USD': -94.96272053405455,
+        #             'SOL / USD': -167.26353028247604,
+        #             'APE / USD': -69.12437849497073,
+        #             'Crypto Volatility Index': 240.00793524473616,
+        #             'AVAX / USD': -84.59636423287223,
+        #             'MATIC / USD': -100.97709948693603,
+        #             'WBTC / USD': -528.8811705105545
+        #         }
+        #     }
+        # }
+
+        return

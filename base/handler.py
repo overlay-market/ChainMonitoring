@@ -49,7 +49,7 @@ class BaseMonitoringHandler:
 
     def alert(self):
         # Define alert logic here (green, orange, red)
-        self.calculate_metrics()
+        # self.calculate_metrics()
         # Send alerts for green, orange, red
         raise NotImplementedError
 
