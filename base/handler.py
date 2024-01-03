@@ -48,6 +48,7 @@ class BaseMonitoringHandler:
         # Define alert logic here (green, orange, red)
         self.calculate_metrics()
         # Send alerts for green, orange, red
+        raise NotImplementedError
 
     def run(self):
         # TO-DO: run alert function every heartbeat sec
