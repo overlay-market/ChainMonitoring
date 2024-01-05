@@ -1,6 +1,6 @@
 from subgraph.client import ResourceClient as SubgraphClient
 from typing import List
-from utils import send_telegram_message
+from utils import send_alert
 
 class BaseResourceClient:
     name = ''
