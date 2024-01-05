@@ -45,15 +45,12 @@ class MintMetric(Metric):
 
 class Handler(BaseMonitoringHandler):
 
-    # @staticmethod
     def overmint(ovl_token_minted):
         return ovl_token_minted > 100
 
-    # @staticmethod
     def test_alert_green(ovl_token_minted):
         return ovl_token_minted <= 100 and ovl_token_minted >= 0
 
-    # @staticmethod
     def test_alert_orange(ovl_token_minted):
         return ovl_token_minted < 0
 
