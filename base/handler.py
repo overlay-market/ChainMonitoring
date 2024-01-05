@@ -39,13 +39,17 @@ class BaseMonitoringHandler:
         pass
         
     def calculate_metrics(self):
-        return [
-            {
-                'name': metric.name,
-                'value': metric.calculate(**self.kwargs)
-            }
+        # return {
+        #     [{
+        #         'name': metric.name,
+        #         'value': metric.calculate(**self.kwargs)
+        #     }]
+        #     for metric in self.metrics
+        # }
+        return {
+            metric.name: metric.calculate(**self.kwargs)
             for metric in self.metrics
-        ]
+        }
 
     def alert(self):
         # Define alert logic here (green, orange, red)
