@@ -25,7 +25,7 @@ class BaseMonitoringHandler:
     clients: List = [SubgraphClient(), ]
     metrics: List[Metric] = []
     alert_rules: List[AlertRule] = []
-    heartbeat: int  # seconds
+    heartbeat: int  = 300   # seconds
 
     def __init__(self) -> None:
         self.set_name()
@@ -39,13 +39,6 @@ class BaseMonitoringHandler:
         pass
         
     def calculate_metrics(self):
-        # return {
-        #     [{
-        #         'name': metric.name,
-        #         'value': metric.calculate(**self.kwargs)
-        #     }]
-        #     for metric in self.metrics
-        # }
         return {
             metric.name: metric.calculate(**self.kwargs)
             for metric in self.metrics
