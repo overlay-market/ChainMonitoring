@@ -56,6 +56,7 @@ class BaseMonitoringHandler:
         calculated_metrics = self.calculate_metrics()
         print('calculated_metrics!!', calculated_metrics)
 
+        # Sample calculated metrics
         # calculated_metrics = {
         #     'ovl_token_minted': {
         #         'ALL': -805.7973282971279,
@@ -86,7 +87,8 @@ class BaseMonitoringHandler:
                                 alert_level,
                                 rule_name,
                                 metric_name,
-                                metric_label
+                                metric_label,
+                                metric_value,
                             )
 
     def run(self):

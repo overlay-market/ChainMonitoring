@@ -70,7 +70,13 @@ class CMThread(threading.Thread):
                 f"Error on thread.\n\n{exception}"
             )
 
-def send_alert(alert_level, alert_name, metric_name, metric_label):
+def send_alert(
+    alert_level,
+    alert_name,
+    metric_name,
+    metric_label,
+    metric_value,
+):
     send_telegram_message(
         TELEGRAM_BOT_TOKEN,
         TELEGRAM_CHAT_ID,
@@ -79,4 +85,5 @@ def send_alert(alert_level, alert_name, metric_name, metric_label):
         f"alert_name={alert_name}\n"
         f"metric_name={metric_name}\n"
         f"metric_label={metric_label}\n"
+        f"metric_value={metric_value}\n"
     )
