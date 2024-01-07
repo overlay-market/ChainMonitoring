@@ -45,25 +45,15 @@ class MintMetric(Metric):
 
 class Handler(BaseMonitoringHandler):
 
-    def overmint(ovl_token_minted):
-        return ovl_token_minted > 100
-
-    def test_alert_green(ovl_token_minted):
-        return ovl_token_minted <= 100 and ovl_token_minted >= 0
-
-    def test_alert_orange(ovl_token_minted):
-        return ovl_token_minted < 0
-
     alert_rules = {
         'red': {
-            # 'overmint': 'ovl_token_minted > 100',
-            'overmint': overmint,
+            'overmint': 'ovl_token_minted > 100',
         },
         'green': {
-            'test_alert_green': test_alert_green,
+            'test_alert_green': 'ovl_token_minted <= 100 and ovl_token_minted >= 0',
         },
         'orange': {
-            'test_alert_orange': test_alert_orange,
+            'test_alert_orange': 'ovl_token_minted < 0',
         },
     }
     def __init__(self):
