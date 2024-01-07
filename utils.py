@@ -73,6 +73,7 @@ class CMThread(threading.Thread):
 def send_alert(
     alert_level,
     alert_name,
+    rule_formula,
     metric_name,
     metric_label,
     metric_value,
@@ -83,6 +84,7 @@ def send_alert(
         f"[ALERT]\n"
         f"alert_level={alert_level}\n"
         f"alert_name={alert_name}\n"
+        f"rule_formula={rule_formula}\n"
         f"metric_name={metric_name}\n"
         f"metric_label={metric_label}\n"
         f"metric_value={metric_value}\n"
