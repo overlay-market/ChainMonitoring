@@ -1,6 +1,9 @@
-from subgraph.client import ResourceClient as SubgraphClient
+from py_expression_eval import Parser
 from typing import List
+
+from subgraph.client import ResourceClient as SubgraphClient
 from utils import send_alert
+
 
 class BaseResourceClient:
     name = ''
@@ -18,6 +21,12 @@ class AlertRule:
     name = 'name_of_alert_rule'
     metric: Metric
     send_notifications: bool = True
+
+
+class Alert:
+    alert_level: str = ''
+    rule_name: str = ''
+    rule_formula: str = ''
 
 
 class BaseMonitoringHandler:
@@ -63,15 +72,18 @@ class BaseMonitoringHandler:
         #     }
         # }
 
+        formula_parser = Parser()
         for alert_level, rule in self.alert_rules.items():
-            for rule_name, rule_func in rule.items():
+            for rule_name, rule_formula in rule.items():
                 for metric_name, metric in calculated_metrics.items():
                     for metric_label, metric_value in metric.items():
                         print('alert_level', alert_level)
                         print('rule_name', rule_name)
+                        print('rule_formula', rule_formula)
                         print('metric_name', metric_name)
                         print('metric_label', metric_label)
-                        should_alert = rule_func(metric_value)
+                        formula = formula_parser.parse(rule_formula)
+                        should_alert = formula.evaluate({metric_name: metric_value})
                         print('should_alert', should_alert)
                         print('=================================')
 
@@ -79,6 +91,7 @@ class BaseMonitoringHandler:
                             send_alert(
                                 alert_level,
                                 rule_name,
+                                rule_formula,
                                 metric_name,
                                 metric_label,
                                 metric_value,
