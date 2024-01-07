@@ -98,5 +98,6 @@ class BaseMonitoringHandler:
                             )
 
     def run(self):
-        # TO-DO: run alert function every heartbeat sec
-        return
+        while True:
+            self.alert()
+            time.sleep(self.heartbeat)

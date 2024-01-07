@@ -50,10 +50,12 @@ class Handler(BaseMonitoringHandler):
             'overmint': 'ovl_token_minted > 100',
         },
         'green': {
-            'test_alert_green': 'ovl_token_minted <= 100 and ovl_token_minted >= 0',
+            'test_alert_green_1': 'ovl_token_minted <= 100 and ovl_token_minted >= 0',
+            'test_alert_green_2': 'ovl_token_minted <= 100 and ovl_token_minted >= 0',
         },
         'orange': {
-            'test_alert_orange': 'ovl_token_minted < 0',
+            'test_alert_orange_1': 'ovl_token_minted < 0',
+            'test_alert_orange_2': 'ovl_token_minted == 0',
         },
     }
     def __init__(self):
