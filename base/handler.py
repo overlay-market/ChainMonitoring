@@ -36,31 +36,10 @@ class BaseMonitoringHandler:
     metrics: List[Metric] = []
     alert_rules: List[AlertRule] = []
     heartbeat: int  = 300   # seconds
-
-    def __init__(self) -> None:
-        self.set_name()
-        self.set_clients()
-        self.set_metrics()
-
-    def set_name(self):
-        pass
-
-    def set_metrics(self):
-        pass
         
     def calculate_metrics(self):
-        return {
-            metric.name: metric.calculate(**self.kwargs)
-            for metric in self.metrics
-        }
-
-    def alert(self):
-        # Calculate metrics
-        calculated_metrics = self.calculate_metrics()
-        print('calculated_metrics!!', calculated_metrics)
-
         # Sample calculated metrics
-        # calculated_metrics = {
+        # {
         #     'ovl_token_minted': {
         #         'ALL': -805.7973282971279,
         #         'LINK / USD': -94.96272053405455,
@@ -72,6 +51,15 @@ class BaseMonitoringHandler:
         #         'WBTC / USD': -528.8811705105545
         #     }
         # }
+        return {
+            metric.name: metric.calculate(**self.kwargs)
+            for metric in self.metrics
+        }
+
+    def alert(self):
+        """Send alert notifications."""
+        calculated_metrics = self.calculate_metrics()
+        print('calculated_metrics!!', calculated_metrics)
 
         formula_parser = Parser()
         for alert_level, rule in self.alert_rules.items():
@@ -99,6 +87,7 @@ class BaseMonitoringHandler:
                             )
 
     def run(self):
+        """Send alerts per heartbeat."""
         while True:
             self.alert()
             time.sleep(self.heartbeat)
