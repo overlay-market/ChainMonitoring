@@ -49,7 +49,7 @@ class Handler(BaseMonitoringHandler):
     metrics = [MintMetric, ]
     alert_rules = {
         'red': {
-            'overmint': 'ovl_token_minted > 100',
+            'overmint': 'ovl_token_minted > 1000',
         },
         'green': {
             'test_alert_green_1': 'ovl_token_minted <= 100 and ovl_token_minted >= 0',
