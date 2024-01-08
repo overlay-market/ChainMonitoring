@@ -45,6 +45,8 @@ class MintMetric(Metric):
 
 class Handler(BaseMonitoringHandler):
 
+    name = 'ovl_mint'
+    metrics = [MintMetric, ]
     alert_rules = {
         'red': {
             'overmint': 'ovl_token_minted > 100',
@@ -63,14 +65,3 @@ class Handler(BaseMonitoringHandler):
         self.kwargs = {
             'subgraph_client': SubgraphClient(),
         }
-
-    def set_name(self):
-        self.name = 'ovl_mint'
-
-    def set_clients(self):
-        self.clients = [SubgraphClient(), ]
-
-    def set_metrics(self):
-        self.metrics = [
-            MintMetric,
-        ]
