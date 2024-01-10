@@ -25,7 +25,10 @@ class BaseMonitoringHandler:
         for alert_rule in self.alert_rules:
             formula = formula_parser.parse(alert_rule['formula'])
             for calc_metric in calculated_metrics:
-                metric_values_dict = {item['metric_name']: item['value'] for item in calc_metric['results']}
+                metric_values_dict = {
+                    item['metric_name']: item['value']
+                    for item in calc_metric['results']
+                }
                 should_alert = formula.evaluate(metric_values_dict)
                 if should_alert:
                     send_alert(
