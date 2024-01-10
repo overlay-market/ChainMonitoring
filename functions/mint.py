@@ -1,6 +1,6 @@
 import pandas as pd
 
-from base.handler import BaseMonitoringHandler, Metric
+from base.handler import BaseMonitoringHandler
 from subgraph.client import ResourceClient as SubgraphClient
 from constants import (
     AVAILABLE_MARKETS,
@@ -10,12 +10,76 @@ from constants import (
 )
 
 
-class MintMetric(Metric):
-    name = 'ovl_token_minted'
-    labels = ['market', ]
+class Handler(BaseMonitoringHandler):
+    name = 'ovl_mint'
+    alert_rules = [
+        {
+            'level': 'red',
+            'name': 'overmint',
+            'formula': 'ovl_token_minted > 1000',
+        },
+        {
+            'level': 'red',
+            'name': 'undermint',
+            'formula': 'ovl_token_minted < -1000',
+        },
+        {
+            'level': 'green',
+            'name': 'sample_alert_green',
+            'formula': 'ovl_token_minted <= 100 and ovl_token_minted >= 0',
+        },
+        {
+            'level': 'orange',
+            'name': 'sample_alert_orange',
+            'formula': 'ovl_token_minted == 0'
+        },
+        {
+            'level': 'orange',
+            'name': 'no_change_in_5m',
+            'formula': 'ovl_token_minted - ovl_token_minted__offset_5m == 0',
+        },
+    ]
 
-    def calculate(subgraph_client):
-        all_positions = subgraph_client.get_all_positions()
+    def __init__(self):
+        super().__init__()
+        self.subgraph_client = SubgraphClient()
+        self.kwargs = {
+            'subgraph_client': SubgraphClient(),
+        }
+
+    def calculate_metrics(self):
+        """
+        Returns calculated metrics:
+        calculated_metrics = [
+            {
+                'label': 'ALL',
+                'results': [
+                    {
+                        'metric_name': 'ovl_token_minted',
+                        'value': 100,
+                    },
+                    {
+                        'metric_name': 'ovl_token_minted__offset_5m',
+                        'value': 50,
+                    }
+                ]
+            },
+            {
+                'label': 'LINK / USD',
+                'results': [
+                    {
+                        'metric_name': 'ovl_token_minted',
+                        'value': 81,
+                    },
+                    {
+                        'metric_name': 'ovl_token_minted__offset_5m',
+                        'value': 120,
+                    }
+                ]
+            }
+        ]
+        """
+        all_positions = self.subgraph_client.get_all_positions()
         if (not len(all_positions)):
             return
         all_positions_df = pd.DataFrame(all_positions)
@@ -31,37 +95,35 @@ class MintMetric(Metric):
         mint_total_per_market = dict(
             zip(mint_total_per_market_df['market'], mint_total_per_market_df['mint']))
 
-        result = {
-            ALL_MARKET_LABEL: mint_total,
+        results_dict = {
+            ALL_MARKET_LABEL: {
+                'ovl_token_minted': mint_total,
+                'ovl_token_minted__offset_5m': mint_total
+            },
             **{
-                MAP_MARKET_ID_TO_NAME[market_id]: mint_total_per_market[market_id] / MINT_DIVISOR
+                MAP_MARKET_ID_TO_NAME[market_id]: {
+                    'ovl_token_minted': mint_total_per_market[market_id] / MINT_DIVISOR,
+                    'ovl_token_minted__offset_5m': mint_total_per_market[market_id] / MINT_DIVISOR,
+                }
                 for market_id in AVAILABLE_MARKETS
                 if market_id in mint_total_per_market
             },
         }
-        print('result', result)
-        return result
+        print('results_dict', results_dict)
 
-
-class Handler(BaseMonitoringHandler):
-
-    name = 'ovl_mint'
-    metrics = [MintMetric, ]
-    alert_rules = {
-        'red': {
-            'overmint': 'ovl_token_minted > 1000',
-        },
-        'green': {
-            'test_alert_green_1': 'ovl_token_minted <= 100 and ovl_token_minted >= 0',
-            'test_alert_green_2': 'ovl_token_minted <= 100 and ovl_token_minted >= 0',
-        },
-        'orange': {
-            'test_alert_orange_1': 'ovl_token_minted < 0',
-            'test_alert_orange_2': 'ovl_token_minted == 0',
-        },
-    }
-    def __init__(self):
-        super().__init__()
-        self.kwargs = {
-            'subgraph_client': SubgraphClient(),
-        }
+        metric_names = ['ovl_token_minted', 'ovl_token_minted__offset_5m', ]
+        results = [
+            {
+                'label': MAP_MARKET_ID_TO_NAME[market_id],
+                'results': [
+                    {
+                        'metric_name': metric_name,
+                        'value': results_dict[MAP_MARKET_ID_TO_NAME[market_id]][metric_name]
+                    }
+                    for metric_name in metric_names
+                ]
+            }
+            for market_id in AVAILABLE_MARKETS
+        ]
+        print('results', results)
+        return results
