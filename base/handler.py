@@ -6,55 +6,15 @@ from subgraph.client import ResourceClient as SubgraphClient
 from utils import send_alert
 
 
-class BaseResourceClient:
-    name = ''
-
-
-class Metric:
-    name = 'name_of_metric'
-    labels = []
-
-    def calculate(self, **kwargs):
-        raise NotImplementedError
-
-
-class AlertRule:
-    name = 'name_of_alert_rule'
-    metric: Metric
-    send_notifications: bool = True
-
-
-class Alert:
-    alert_level: str = ''
-    rule_name: str = ''
-    rule_formula: str = ''
-
-
 class BaseMonitoringHandler:
     name: str = 'name_of_entity_being_monitored'
     clients: List = [SubgraphClient(), ]
-    metrics: List[Metric] = []
-    alert_rules: List[AlertRule] = []
+    metrics = []
+    alert_rules = []
     heartbeat: int  = 300   # seconds
-        
+
     def calculate_metrics(self):
-        # Sample calculated metrics
-        # {
-        #     'ovl_token_minted': {
-        #         'ALL': -805.7973282971279,
-        #         'LINK / USD': -94.96272053405455,
-        #         'SOL / USD': -167.26353028247604,
-        #         'APE / USD': -69.12437849497073,
-        #         'Crypto Volatility Index': 240.00793524473616,
-        #         'AVAX / USD': -84.59636423287223,
-        #         'MATIC / USD': -100.97709948693603,
-        #         'WBTC / USD': -528.8811705105545
-        #     }
-        # }
-        return {
-            metric.name: metric.calculate(**self.kwargs)
-            for metric in self.metrics
-        }
+        raise NotImplementedError
 
     def alert(self):
         """Send alert notifications."""
@@ -62,29 +22,18 @@ class BaseMonitoringHandler:
         print('calculated_metrics!!', calculated_metrics)
 
         formula_parser = Parser()
-        for alert_level, rule in self.alert_rules.items():
-            for rule_name, rule_formula in rule.items():
-                for metric_name, metric in calculated_metrics.items():
-                    for metric_label, metric_value in metric.items():
-                        print('alert_level', alert_level)
-                        print('rule_name', rule_name)
-                        print('rule_formula', rule_formula)
-                        print('metric_name', metric_name)
-                        print('metric_label', metric_label)
-                        formula = formula_parser.parse(rule_formula)
-                        should_alert = formula.evaluate({metric_name: metric_value})
-                        print('should_alert', should_alert)
-                        print('=================================')
-
-                        if should_alert:
-                            send_alert(
-                                alert_level,
-                                rule_name,
-                                rule_formula,
-                                metric_name,
-                                metric_label,
-                                metric_value,
-                            )
+        for alert_rule in self.alert_rules:
+            formula = formula_parser.parse(alert_rule['formula'])
+            for calc_metric in calculated_metrics:
+                metric_values_dict = {item['metric_name']: item['value'] for item in calc_metric['results']}
+                should_alert = formula.evaluate(metric_values_dict)
+                if should_alert:
+                    send_alert(
+                        alert_rule['level'],
+                        alert_rule['name'],
+                        alert_rule['formula'],
+                        calc_metric['label'],
+                    )
 
     def run(self):
         """Send alerts per heartbeat."""
