@@ -76,12 +76,17 @@ def send_alert(
     rule_formula,
     metric_label,
 ):
+    alert_level_icon_map = {
+        'green': '🟢',
+        'orange': '🟠',
+        'red': '🔴',
+    }
     send_telegram_message(
         TELEGRAM_BOT_TOKEN,
         TELEGRAM_CHAT_ID,
-        f"[ALERT]\n"
+        f"{alert_level_icon_map[alert_level]} {alert_name}\n"
         f"alert_level={alert_level}\n"
-        f"alert_name={alert_name}\n"
+        # f"alert_name={alert_name}\n"
         f"rule_formula={rule_formula}\n"
-        f"metric_label={metric_label}\n"
+        f"metric_label={metric_label}\n",
     )
