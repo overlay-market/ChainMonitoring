@@ -22,7 +22,8 @@ def send_telegram_message(bot_token, chat_id, message):
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {
         'chat_id': chat_id,
-        'text': f"[FROM CHAIN MONITORING]\n\n{message}"
+        'parse_mode': 'HTML',
+        'text': message,
     }
     try:
         response = requests.post(url, json=payload)
@@ -81,12 +82,16 @@ def send_alert(
         'orange': '🟠',
         'red': '🔴',
     }
+    message = (
+        f"{alert_level_icon_map[alert_level]} {alert_name}\n" +
+        f"alert_level={alert_level}\n" +
+        # f"alert_name={alert_name}\n"
+        f"rule_formula={rule_formula}\n" +
+        f"metric_label={metric_label}\n"
+    )
+    print('message', message)
     send_telegram_message(
         TELEGRAM_BOT_TOKEN,
         TELEGRAM_CHAT_ID,
-        f"{alert_level_icon_map[alert_level]} {alert_name}\n"
-        f"alert_level={alert_level}\n"
-        # f"alert_name={alert_name}\n"
-        f"rule_formula={rule_formula}\n"
-        f"metric_label={metric_label}\n",
+        message,
     )
