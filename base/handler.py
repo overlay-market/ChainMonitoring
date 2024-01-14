@@ -29,8 +29,16 @@ class BaseMonitoringHandler:
                     item['metric_name']: item['value']
                     for item in calc_metric['results']
                 }
+                # metric_values_dict = {
+                #     'ovl_token_minted': 100,
+                #     'ovl_token_minted__offset_5m': 50,
+                # }
+                # formula = 'ovl_token_minted - ovl_token_minted__offset_5m == 0'
+                print('metric_values_dict', metric_values_dict)
                 should_alert = formula.evaluate(metric_values_dict)
+                #  To-do: use enum to pass variables
                 if should_alert:
+                    print(f"SHOULD ALERT !!! {alert_rule['name']}")
                     send_alert(
                         alert_rule['level'],
                         alert_rule['name'],
