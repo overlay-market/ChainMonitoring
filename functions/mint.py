@@ -1,6 +1,6 @@
 import pandas as pd
 
-from base.handler import BaseMonitoringHandler
+from base.handler import AlertRule, BaseMonitoringHandler
 from subgraph.client import ResourceClient as SubgraphClient
 from constants import (
     AVAILABLE_MARKETS,
@@ -10,34 +10,54 @@ from constants import (
 )
 
 
+def overmint(calculated_metrics):
+    return calculated_metrics['ovl_token_minted'] > 0
+
+
 class Handler(BaseMonitoringHandler):
     name = 'ovl_mint'
     alert_rules = [
-        {
-            'level': 'red',
-            'name': 'overmint',
-            'formula': 'ovl_token_minted > 1000',
-        },
-        {
-            'level': 'red',
-            'name': 'undermint',
-            'formula': 'ovl_token_minted < -1000',
-        },
-        {
-            'level': 'green',
-            'name': 'sample_alert_green',
-            'formula': 'ovl_token_minted <= 100 and ovl_token_minted >= 0',
-        },
-        {
-            'level': 'orange',
-            'name': 'sample_alert_orange',
-            'formula': 'ovl_token_minted == 0'
-        },
-        {
-            'level': 'orange',
-            'name': 'no_change_in_5m',
-            'formula': 'ovl_token_minted - ovl_token_minted__offset_5m == 0',
-        },
+        AlertRule(
+            level='red',
+            name='Overminting (Function)',
+            message='Overmint happened!',
+            formula=None,
+            function=overmint,
+        ),
+        AlertRule(
+            level='red',
+            name='Overminting (Formula)',
+            message='Overmint happened!',
+            formula='ovl_token_minted > 0',
+            function=None,
+        ),
+        # {
+        #     'level': 'red',
+        #     'name': 'overmint',
+        #     # 'formula': 'ovl_token_minted - ovl_token_minted__offset_5m == 0',
+        #     'function': overmint,
+        #     'message': 'Overmint happened...',
+        # },
+        # {
+        #     'level': 'red',
+        #     'name': 'undermint',
+        #     'formula': 'ovl_token_minted < -1000',
+        # },
+        # {
+        #     'level': 'green',
+        #     'name': 'sample_alert_green',
+        #     'formula': 'ovl_token_minted - ovl_token_minted__offset_5m == 0',
+        # },
+        # {
+        #     'level': 'orange',
+        #     'name': 'sample_alert_orange',
+        #     'formula': 'ovl_token_minted < 0'
+        # },
+        # {
+        #     'level': 'orange',
+        #     'name': 'no_change_in_5m',
+        #     'formula': 'ovl_token_minted - ovl_token_minted == 0',
+        # },
     ]
 
     def __init__(self):
@@ -50,6 +70,13 @@ class Handler(BaseMonitoringHandler):
     def calculate_metrics(self):
         """
         Returns calculated metrics:
+
+        Simplified: use tuple or enum
+        calculated_metrics = {
+            'ALL': (100, 50),
+            'LINK / USD': (80, 120),
+        }
+
         calculated_metrics = [
             {
                 'label': 'ALL',
