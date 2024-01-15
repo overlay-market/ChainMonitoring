@@ -86,7 +86,7 @@ def send_alert(
         f"{alert_level_icon_map[alert_level]} {alert_name}\n" +
         f"alert_level={alert_level}\n" +
         # f"alert_name={alert_name}\n"
-        f"rule_formula={rule_formula}\n" +
+        # f"rule_formula={rule_formula}\n" +
         f"metric_label={metric_label}\n"
     )
     print('message', message)
