@@ -5,7 +5,8 @@ import threading
 import traceback
 from constants import (
     TELEGRAM_BOT_TOKEN,
-    TELEGRAM_CHAT_ID
+    TELEGRAM_CHAT_ID,
+    ALERT_LEVEL_ICON_MAPPING
 )
 
 def write_to_json(data, filename):
@@ -71,22 +72,11 @@ class CMThread(threading.Thread):
                 f"Error on thread.\n\n{exception}"
             )
 
-def send_alert(
-    alert_level,
-    alert_name,
-    rule_formula,
-    metric_label,
-):
-    alert_level_icon_map = {
-        'green': '🟢',
-        'orange': '🟠',
-        'red': '🔴',
-    }
+def send_alert(alert_rule, metric_label):
     message = (
-        f"{alert_level_icon_map[alert_level]} {alert_name}\n" +
-        f"alert_level={alert_level}\n" +
-        # f"alert_name={alert_name}\n"
-        # f"rule_formula={rule_formula}\n" +
+        f"{ALERT_LEVEL_ICON_MAPPING[alert_rule.level]} {alert_rule.name}\n\n" +
+        f"{alert_rule.message}\n\n" +
+        f"alert_level={alert_rule.level}\n" +
         f"metric_label={metric_label}\n"
     )
     print('message', message)

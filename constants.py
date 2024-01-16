@@ -51,3 +51,9 @@ CONTRACT_ADDRESS = '0xC3cB99652111e7828f38544E3e94c714D8F9a51a'
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+
+ALERT_LEVEL_ICON_MAPPING = {
+    'green': '🟢',
+    'orange': '🟠',
+    'red': '🔴',
+}
