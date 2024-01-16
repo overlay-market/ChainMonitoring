@@ -26,7 +26,7 @@ def send_telegram_message(bot_token, chat_id, message):
         'text': message,
     }
     try:
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=10)
         if response.status_code == 200:
             print("Message sent successfully!")
         else:
