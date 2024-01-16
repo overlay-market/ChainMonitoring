@@ -6,7 +6,7 @@ from constants import (
     AVAILABLE_MARKETS,
     MINT_DIVISOR,
     ALL_MARKET_LABEL,
-    MAP_MARKET_ID_TO_NAME
+    MAP_MARKET_ID_TO_NAME,
 )
 
 

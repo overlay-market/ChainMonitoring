@@ -36,6 +36,9 @@ class AlertRule:
         elif self.function:
             return self.function(calculated_metrics_dict)
 
+    def send_alert(self, metric_label):
+        send_alert(self, metric_label)
+
 
 class BaseMonitoringHandler:
     name: str = 'name_of_entity_being_monitored'
@@ -67,12 +70,7 @@ class BaseMonitoringHandler:
                 #  To-do: use enum to pass variables
                 if alert_rule.should_alert(metric_values_dict):
                     print(f"SHOULD ALERT !!! {alert_rule.name}")
-                    send_alert(
-                        alert_rule.level,
-                        alert_rule.name,
-                        alert_rule.formula or alert_rule.function,
-                        calc_metric['label'],
-                    )
+                    alert_rule.send_alert(calc_metric['label'])
 
     def run(self):
         """Send alerts per heartbeat."""
