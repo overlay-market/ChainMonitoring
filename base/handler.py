@@ -68,6 +68,12 @@ class BaseMonitoringHandler:
     alert_rules: List[AlertRule] = []
     heartbeat: int  = 300   # seconds
 
+    def __init__(self, name, clients, alert_rules, heartbeat):
+        self.name = name
+        self.clients = clients
+        self.alert_rules = alert_rules
+        self.heartbeat = heartbeat
+
     def calculate_metrics(self):
         raise NotImplementedError
 
