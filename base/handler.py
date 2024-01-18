@@ -50,8 +50,26 @@ class BaseMonitoringHandler:
     def calculate_metrics(self):
         raise NotImplementedError
 
-    def alert(self):
-        """Send alert notifications."""
+    def alert(self) -> None:
+        """
+        Send alert notifications based on the defined alert rules and calculated metrics.
+
+        Returns:
+            None
+
+        Note:
+            The method calculates metrics, iterates through the defined alert rules, and checks whether each rule
+            should trigger an alert based on the calculated metric values. If an alert should be triggered, the
+            alert rule's `send_alert` method is called with the corresponding metric label.
+
+        Example:
+            Consider an instance of the AlertManager class:
+            ```
+            alert_manager = AlertManager(alert_rules=[alert_rule_1, alert_rule_2, ...])
+            alert_manager.alert()
+            ```
+            This will trigger alerts for any alert rule that evaluates to True based on the calculated metrics.
+        """
         calculated_metrics = self.calculate_metrics()
         print('calculated_metrics!!', calculated_metrics)
 
