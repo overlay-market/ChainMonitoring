@@ -26,6 +26,27 @@ class AlertRule:
             self.formula = None
 
     def should_alert(self, calculated_metrics_dict):
+        """
+        Determines whether an alert should be triggered based on the provided calculated metrics.
+
+        Args:
+            self: The instance of the class containing the alert logic.
+            calculated_metrics_dict (dict): A dictionary containing the calculated metrics needed for evaluation.
+
+        Returns:
+            bool: True if an alert should be triggered, False otherwise.
+
+        Note:
+            The method checks for the presence of a formula and/or a function to decide whether to trigger an alert.
+            If both a formula and a function are present, the result is the logical OR of their evaluations.
+            If only a formula or a function is present, the result is the evaluation of the respective one.
+
+        Example:
+            Consider an instance of the class with a formula and a function:
+            ```
+            should_trigger = alert_instance.should_alert(calculated_metrics)
+            ```
+        """
         if self.formula and self.function:
             return (
                 self.formula.evaluate(calculated_metrics_dict)
