@@ -64,7 +64,6 @@ class AlertRule:
 class BaseMonitoringHandler:
     name: str = 'name_of_entity_being_monitored'
     clients: List = [SubgraphClient(), ]
-    metrics = []
     alert_rules: List[AlertRule] = []
     heartbeat: int  = 300   # seconds
 
