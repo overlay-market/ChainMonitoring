@@ -44,6 +44,13 @@ class ResourceClient:
     )
     PAGE_SIZE = 500
 
+    def __init__(self):
+        avail_markets = self.get_available_markets()
+        self.AVAILABLE_MARKETS = [
+            market['id']
+            for market in avail_markets
+        ]
+
     @staticmethod
     def validate_response(
         response: requests.Response, list_key: str
@@ -239,7 +246,12 @@ class ResourceClient:
             curr_positions = self.validate_response(response, 'positions')
 
         print('all_positions', len(all_positions))
-        return all_positions
+        filtered_positions = [
+            position
+            for position in all_positions
+            if position['market']['id'] in self.AVAILABLE_MARKETS
+        ]
+        return filtered_positions
 
     def get_all_live_positions(
         self, page_size: int = PAGE_SIZE
