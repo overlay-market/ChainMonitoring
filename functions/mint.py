@@ -3,7 +3,6 @@ import pandas as pd
 from base.handler import AlertRule, BaseMonitoringHandler
 from subgraph.client import ResourceClient as SubgraphClient
 from constants import (
-    AVAILABLE_MARKETS,
     MINT_DIVISOR,
     ALL_MARKET_LABEL,
     MAP_MARKET_ID_TO_NAME,
@@ -112,10 +111,10 @@ class Handler(BaseMonitoringHandler):
         all_positions_df['mint'] = all_positions_df['mint'].apply(int)
         all_positions_df[['market', 'position_id']] = all_positions_df['id'].str.split(
             '-', expand=True)
-        all_positions_df.drop(
-            all_positions_df[~all_positions_df['market'].isin(AVAILABLE_MARKETS)].index,
-            inplace = True
-        )
+        # all_positions_df.drop(
+        #     all_positions_df[~all_positions_df['market'].isin(AVAILABLE_MARKETS)].index,
+        #     inplace = True
+        # )
         mint_total = all_positions_df['mint'].sum() / MINT_DIVISOR
         mint_total_per_market_df = all_positions_df.groupby(by='market')['mint'].sum().reset_index()
         mint_total_per_market = dict(
@@ -131,8 +130,7 @@ class Handler(BaseMonitoringHandler):
                     'ovl_token_minted': mint_total_per_market[market_id] / MINT_DIVISOR,
                     'ovl_token_minted__offset_5m': mint_total_per_market[market_id] / MINT_DIVISOR,
                 }
-                for market_id in AVAILABLE_MARKETS
-                if market_id in mint_total_per_market
+                for market_id in mint_total_per_market
             },
         }
         print('results_dict', results_dict)
@@ -149,7 +147,7 @@ class Handler(BaseMonitoringHandler):
                     for metric_name in metric_names
                 ]
             }
-            for market_id in AVAILABLE_MARKETS
+            for market_id in mint_total_per_market
         ]
         print('results', results)
         return results
