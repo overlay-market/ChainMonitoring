@@ -111,10 +111,6 @@ class Handler(BaseMonitoringHandler):
         all_positions_df['mint'] = all_positions_df['mint'].apply(int)
         all_positions_df[['market', 'position_id']] = all_positions_df['id'].str.split(
             '-', expand=True)
-        # all_positions_df.drop(
-        #     all_positions_df[~all_positions_df['market'].isin(AVAILABLE_MARKETS)].index,
-        #     inplace = True
-        # )
         mint_total = all_positions_df['mint'].sum() / MINT_DIVISOR
         mint_total_per_market_df = all_positions_df.groupby(by='market')['mint'].sum().reset_index()
         mint_total_per_market = dict(
