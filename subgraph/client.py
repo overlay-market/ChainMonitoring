@@ -5,12 +5,13 @@ from pydantic import ValidationError
 from typing import List, Dict, Union
 
 from constants import SUBGRAPH_API_KEY
-from .models import Position, Build
+from .models import Position, Build, Market
 
 
 MODEL_MAP = {
     'positions': Position,
     'builds': Build,
+    'markets': Market,
 }
 
 
@@ -37,7 +38,10 @@ class ResourceClient:
     # URL = 'https://api.studio.thegraph.com/proxy/49419/overlay-contracts/v0.0.8'
     # URL = 'https://api.studio.thegraph.com/query/46086/overlay-v2-subgraph-arbitrum/version/latest'
     # URL = 'https://api.studio.thegraph.com/query/50057/overlay-arbitrum/v1.0.1'
-    URL = f'https://gateway-arbitrum.network.thegraph.com/api/{SUBGRAPH_API_KEY}/subgraphs/id/7RuVCeRzAHL5apu6SWHyUEVt3Ko2pUv2wMTiHQJaiUW9'
+    URL = (
+        f'https://gateway-arbitrum.network.thegraph.com/api/'
+        f'{SUBGRAPH_API_KEY}/subgraphs/id/7RuVCeRzAHL5apu6SWHyUEVt3Ko2pUv2wMTiHQJaiUW9'
+    )
     PAGE_SIZE = 500
 
     @staticmethod
@@ -165,8 +169,25 @@ class ResourceClient:
         )
         return query
 
+    def build_query_for_markets(
+        self, where: Dict, page_size: int
+    ) -> str:
+        query = self.build_query(
+            'markets',
+            where=where,
+            filters={
+                'first': page_size,
+            },
+            includes=['id', ],
+            nested_includes={}
+        )
+        return query
+
     def get_positions(
-        self, timestamp_lower: int, timestamp_upper: int, page_size: int = PAGE_SIZE
+        self,
+        timestamp_lower: int,
+        timestamp_upper: int,
+        page_size: int = PAGE_SIZE
     ) -> List[Dict[str, Union[int, float, str]]]:
         all_positions: List[Dict[str, Union[int, float, str]]] = []
         query: str = self.build_query_for_positions(
@@ -176,8 +197,10 @@ class ResourceClient:
             },
             page_size=page_size
         )
-        response: requests.Response = requests.post(self.URL, json={'query': query})
-        curr_positions: List[Dict[str, Union[int, float, str]]] = self.validate_response(response, 'positions')
+        response: requests.Response = requests.post(
+            self.URL, json={'query': query}, timeout=10)
+        curr_positions: List[Dict[str, Union[int, float, str]]] = self.validate_response(
+            response, 'positions')
         page_count: int = 0
         while len(curr_positions) > 0:
             page_count += 1
@@ -190,7 +213,7 @@ class ResourceClient:
                 },
                 page_size=page_size
             )
-            response = requests.post(self.URL, json={'query': query})
+            response = requests.post(self.URL, json={'query': query}, timeout=10)
             curr_positions = self.validate_response(response, 'positions')
         
         return all_positions
@@ -200,8 +223,10 @@ class ResourceClient:
     ) -> List[Dict[str, Union[int, float, str]]]:
         all_positions: List[Dict[str, Union[int, float, str]]] = []
         query: str = self.build_query_for_positions(where={}, page_size=page_size)
-        response: requests.Response = requests.post(self.URL, json={'query': query})
-        curr_positions: List[Dict[str, Union[int, float, str]]] = self.validate_response(response, 'positions')
+        response: requests.Response = requests.post(
+            self.URL, json={'query': query}, timeout=10)
+        curr_positions: List[Dict[str, Union[int, float, str]]] = self.validate_response(
+            response, 'positions')
         while len(curr_positions) > 0:
             all_positions.extend(curr_positions)
             query = self.build_query_for_positions(
@@ -210,7 +235,7 @@ class ResourceClient:
                 },
                 page_size=page_size
             )
-            response = requests.post(self.URL, json={'query': query})
+            response = requests.post(self.URL, json={'query': query}, timeout=10)
             curr_positions = self.validate_response(response, 'positions')
 
         print('all_positions', len(all_positions))
@@ -221,9 +246,13 @@ class ResourceClient:
     ) -> List[Dict[str, Union[int, float, str]]]:
         live_positions: List[Dict[str, Union[int, float, str]]] = []
         query: str = self.build_query_for_builds(where={}, page_size=page_size)
-        response: requests.Response = requests.post(self.URL, json={'query': query})
-        curr_builds: List[Dict[str, Union[int, float, str]]] = self.validate_response(response, 'builds')
-        curr_live_positions: List[Dict[str, Union[int, float, str]]] = extract_live_positions(curr_builds)
+        response: requests.Response = requests.post(
+            self.URL, json={'query': query}, timeout=10)
+        curr_builds: List[Dict[str, Union[int, float, str]]] = self.validate_response(
+            response, 'builds')
+        curr_live_positions: List[Dict[str, Union[int, float, str]]] = (
+            extract_live_positions(curr_builds)
+        )
         page_count: int = 0
         while True:
             page_count += 1
@@ -235,7 +264,7 @@ class ResourceClient:
                 },
                 page_size=page_size
             )
-            response = requests.post(self.URL, json={'query': query})
+            response = requests.post(self.URL, json={'query': query}, timeout=10)
             curr_builds = self.validate_response(response, 'builds')
 
             if len(curr_builds) == 0:
@@ -243,3 +272,15 @@ class ResourceClient:
 
             curr_live_positions = extract_live_positions(curr_builds)
         return live_positions
+
+    def get_available_markets(self):
+        query = self.build_query_for_markets(
+            where={
+                'isShutdown': 'false',
+            },
+            page_size=50
+        )
+        response: requests.Response = requests.post(
+            self.URL, json={'query': query}, timeout=10)
+        markets = self.validate_response(response, 'markets')
+        return markets
