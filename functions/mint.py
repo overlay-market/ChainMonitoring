@@ -61,7 +61,6 @@ class Handler(BaseMonitoringHandler):
     ]
 
     def __init__(self):
-        super().__init__()
         self.subgraph_client = SubgraphClient()
         self.kwargs = {
             'subgraph_client': SubgraphClient(),
