@@ -223,7 +223,12 @@ class ResourceClient:
             response = requests.post(self.URL, json={'query': query}, timeout=10)
             curr_positions = self.validate_response(response, 'positions')
         
-        return all_positions
+        filtered_positions = [
+            position
+            for position in all_positions
+            if position['market']['id'] in self.AVAILABLE_MARKETS
+        ]
+        return filtered_positions
 
     def get_all_positions(
         self, page_size: int = PAGE_SIZE
