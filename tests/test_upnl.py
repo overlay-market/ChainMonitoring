@@ -82,6 +82,16 @@ INITIAL_LIVE_POSITIONS_DF = pd.DataFrame([
     }
 ])
 
+AVAILABLE_MARKETS = [
+    '0x02e5938904014901c96f534b063ec732ea3b48d5',
+    '0x1067b7df86552a53d816ce3fed50d6d01310b48f',
+    '0x33659282d39e62b62060c3f9fb2230e97db15f1e',
+    '0x7c65c99ba1edfc94c535b7aa2d72b0f7357a676b',
+    '0x833ba1a942dc6d33bc3e6959637ae00e0cdcb20b',
+    '0xa811698d855153cc7472d1fb356149a94bd618e7',
+    '0xc28350047d006ed387b0f210d4ea3218137a8a38',
+]
+
 
 def mock_get_position_value(*args, **kwargs):
     return [
@@ -218,7 +228,9 @@ def mock_get_value_of_positions(*args, **kwargs):
 class TestUpnlMetric(unittest.IsolatedAsyncioTestCase):
 
     def test_non_empty_live_positions(self):
-        set_metrics(INITIAL_LIVE_POSITIONS_DF)
+        mock_subgraph_client = MagicMock()
+        mock_subgraph_client.AVAILABLE_MARKETS = AVAILABLE_MARKETS
+        set_metrics(mock_subgraph_client, INITIAL_LIVE_POSITIONS_DF)
         upnl_avax =  REGISTRY.get_sample_value(
             'upnl',
             labels={'market': 'AVAX / USD'}
@@ -258,7 +270,9 @@ class TestUpnlMetric(unittest.IsolatedAsyncioTestCase):
         )
 
     def test_no_live_positions(self):
-        set_metrics(pd.DataFrame([]))
+        mock_subgraph_client = MagicMock()
+        mock_subgraph_client.AVAILABLE_MARKETS = AVAILABLE_MARKETS
+        set_metrics(mock_subgraph_client, pd.DataFrame([]))
         upnl_allmarket =  REGISTRY.get_sample_value(
             'upnl',
             labels={'market': ALL_MARKET_LABEL}
@@ -268,6 +282,7 @@ class TestUpnlMetric(unittest.IsolatedAsyncioTestCase):
 
     async def test_subgraph_error_sets_metrics_to_nan(self):
         mock_subgraph_client = MagicMock()
+        mock_subgraph_client.AVAILABLE_MARKETS = AVAILABLE_MARKETS
         mock_subgraph_client.get_all_live_positions.side_effect = Exception(
             'Subgraph API returned empty data'
         )
@@ -285,6 +300,7 @@ class TestUpnlMetric(unittest.IsolatedAsyncioTestCase):
 
     async def test_blockchain_client(self):
         mock_subgraph_client = MagicMock()
+        mock_subgraph_client.AVAILABLE_MARKETS = AVAILABLE_MARKETS
         mock_subgraph_client.get_all_live_positions.side_effect = MagicMock(
             side_effect=mock_get_all_live_positions)
 

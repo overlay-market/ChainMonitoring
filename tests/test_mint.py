@@ -72,6 +72,17 @@ INITIAL_POSITIONS = [
     },
 ]
 
+AVAILABLE_MARKETS = [
+    '0x02e5938904014901c96f534b063ec732ea3b48d5',
+    '0x1067b7df86552a53d816ce3fed50d6d01310b48f',
+    '0x33659282d39e62b62060c3f9fb2230e97db15f1e',
+    '0x7c65c99ba1edfc94c535b7aa2d72b0f7357a676b',
+    '0x833ba1a942dc6d33bc3e6959637ae00e0cdcb20b',
+    '0xa811698d855153cc7472d1fb356149a94bd618e7',
+    '0xc28350047d006ed387b0f210d4ea3218137a8a38',
+]
+
+
 class TestMintMetric(unittest.TestCase):
 
     def test_initialize_metric(self):
@@ -213,6 +224,7 @@ class TestMintMetric(unittest.TestCase):
     def test_subgraph_client(self):
         mock_subgraph_client = MagicMock()
         mock_subgraph_client.get_all_positions.return_value = INITIAL_POSITIONS
+        mock_subgraph_client.AVAILABLE_MARKETS = AVAILABLE_MARKETS
         mock_subgraph_client.get_positions.return_value = []
         query_mint(
             subgraph_client=mock_subgraph_client,
@@ -228,6 +240,7 @@ class TestMintMetric(unittest.TestCase):
     def test_subgraph_error_sets_metrics_to_nan(self):
         mock_subgraph_client = MagicMock()
         mock_subgraph_client.get_all_positions.return_value = INITIAL_POSITIONS
+        mock_subgraph_client.AVAILABLE_MARKETS = AVAILABLE_MARKETS
         mock_subgraph_client.get_positions.side_effect = Exception(
             'Subgraph API returned empty data'
         )
