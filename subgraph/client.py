@@ -288,7 +288,13 @@ class ResourceClient:
                 break
 
             curr_live_positions = extract_live_positions(curr_builds)
-        return live_positions
+
+        filtered_positions = [
+            position
+            for position in live_positions
+            if position['market'] in self.AVAILABLE_MARKETS
+        ]
+        return filtered_positions
 
     def get_available_markets(self):
         query = self.build_query_for_markets(
