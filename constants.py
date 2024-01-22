@@ -18,6 +18,8 @@ MAP_MARKET_ID_TO_NAME = {
     "0xccd645835ca0033f0c1106e7b24f288e59e867e8": "MILADY / WETH",
     "0xce45c64911bd0a088daabd73ee1bc09ae98cd84b": "MAYC / WETH",
     "0xf30c5cb6205f115799b275430ea0874359476304": "Total Crypto Market Cap / USD",
+    "0x56ff2e923e5c05479ac4c47a3d5ed9a204cc673b": "BTC Dominance",
+    "0x6bd76270a8e8e0c3c030f050134389777a3a7d7e": "Counter-Strike 2 Skins",
 }
 
 AVAILABLE_MARKETS = [
