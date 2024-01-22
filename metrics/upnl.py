@@ -8,7 +8,6 @@ import pandas as pd
 
 from constants import (
     MAP_MARKET_ID_TO_NAME as MARKET_MAP,
-    AVAILABLE_MARKETS,
     ALL_MARKET_LABEL,
     QUERY_INTERVAL,
     MINT_DIVISOR,
@@ -52,10 +51,10 @@ async def process_live_positions(blockchain_client, live_positions):
 
     """
     live_positions_df = pd.DataFrame(live_positions)
-    live_positions_df.drop(
-        live_positions_df[~live_positions_df['market'].isin(AVAILABLE_MARKETS)].index,
-        inplace = True
-    )
+    # live_positions_df.drop(
+    #     live_positions_df[~live_positions_df['market'].isin(AVAILABLE_MARKETS)].index,
+    #     inplace = True
+    # )
     # values = await get_current_value_of_live_positions(blockchain_client, live_positions_df)
     positions = live_positions_df[['market', 'owner.id', 'position_id']].values.tolist()
     values = await blockchain_client.get_value_of_positions(positions)
@@ -66,7 +65,7 @@ async def process_live_positions(blockchain_client, live_positions):
     return live_positions_df
 
 
-def set_metrics_to_nan():
+def set_metrics_to_nan(subgraph_client):
     """
     Set metrics values to NaN to indicate a query error.
 
@@ -86,13 +85,13 @@ def set_metrics_to_nan():
     metrics['upnl_gauge'].labels(market=ALL_MARKET_LABEL).set(math.nan)
     metrics['collateral_rem_gauge'].labels(market=ALL_MARKET_LABEL).set(math.nan)
     metrics['upnl_pct_gauge'].labels(market=ALL_MARKET_LABEL).set(math.nan)
-    for market in AVAILABLE_MARKETS:
+    for market in subgraph_client.AVAILABLE_MARKETS:
         metrics['upnl_gauge'].labels(market=MARKET_MAP[market]).set(math.nan)
         metrics['collateral_rem_gauge'].labels(market=MARKET_MAP[market]).set(math.nan)
         metrics['upnl_pct_gauge'].labels(market=MARKET_MAP[market]).set(math.nan)
 
 
-def set_metrics(live_positions_df_with_curr_values):
+def set_metrics(subgraph_client, live_positions_df_with_curr_values):
     """
     Set metrics based on processed live positions data.
 
@@ -114,7 +113,7 @@ def set_metrics(live_positions_df_with_curr_values):
 
     """
     if not len(live_positions_df_with_curr_values):
-        set_metrics_to_nan()
+        set_metrics_to_nan(subgraph_client)
         return
 
     # Calculate current value of each live position
@@ -175,7 +174,7 @@ async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.
     print('[upnl] Starting query...')
     # 1/0
     blockchain_client.connect_to_network()
-    set_metrics_to_nan()
+    set_metrics_to_nan(subgraph_client)
     try:
         iteration = 0
 
@@ -191,7 +190,7 @@ async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.
         #     f"live_positions_with_current_values_{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.json"
         # )
         print('[upnl] Calculating upnl metrics...')
-        set_metrics(live_positions_df_with_curr_values)
+        set_metrics(subgraph_client, live_positions_df_with_curr_values)
 
         await asyncio.sleep(QUERY_INTERVAL)
 
@@ -205,7 +204,7 @@ async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.
                 # Fetch all live positions so far from the subgraph
                 live_positions = subgraph_client.get_all_live_positions()
                 live_positions_df_with_curr_values = await process_live_positions(blockchain_client, live_positions)
-                set_metrics(live_positions_df_with_curr_values)
+                set_metrics(subgraph_client, live_positions_df_with_curr_values)
 
                 # Increment iteration
                 iteration += 1
@@ -228,7 +227,7 @@ async def query_upnl(subgraph_client, blockchain_client, stop_at_iteration=math.
         handle_error(error_message)
         print(error_message)
         traceback.print_exc()
-        set_metrics_to_nan()
+        set_metrics_to_nan(subgraph_client)
 
 
 subgraph_client = SubgraphClient()
