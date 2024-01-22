@@ -6,7 +6,6 @@ import traceback
 
 from constants import (
     MAP_MARKET_ID_TO_NAME,
-    AVAILABLE_MARKETS,
     ALL_MARKET_LABEL,
     QUERY_INTERVAL,
     MINT_DIVISOR,
@@ -16,7 +15,7 @@ from prometheus_metrics import metrics
 from subgraph.client import ResourceClient as SubgraphClient
 
 
-def set_metrics_to_nan():
+def set_metrics_to_nan(subgraph_client):
     """
     Set metrics values to NaN to indicate a query error.
 
@@ -34,7 +33,7 @@ def set_metrics_to_nan():
     """
     # Set metric to NaN to indicate that something went wrong with the query
     metrics['mint_gauge'].labels(market=ALL_MARKET_LABEL).set(math.nan)
-    for market in AVAILABLE_MARKETS:
+    for market in subgraph_client.AVAILABLE_MARKETS:
         metrics['mint_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[market]).set(math.nan)
 
 
@@ -71,10 +70,6 @@ def initialize_metrics(all_positions):
     all_positions_df['mint'] = all_positions_df['mint'].apply(int)
     all_positions_df[['market', 'position_id']] = all_positions_df['id'].str.split(
         '-', expand=True)
-    all_positions_df.drop(
-        all_positions_df[~all_positions_df['market'].isin(AVAILABLE_MARKETS)].index,
-        inplace = True
-    )
     mint_total = all_positions_df['mint'].sum() / MINT_DIVISOR
     mint_total_per_market_df = all_positions_df.groupby(by='market')['mint'].sum().reset_index()
     mint_total_per_market = dict(
@@ -82,8 +77,6 @@ def initialize_metrics(all_positions):
 
     metrics['mint_gauge'].labels(market=ALL_MARKET_LABEL).set(mint_total)
     for market_id in mint_total_per_market:
-        if market_id not in AVAILABLE_MARKETS:
-            continue
         market_total_mint = mint_total_per_market[market_id] / MINT_DIVISOR
         metrics['mint_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[market_id]).set(
             market_total_mint)
@@ -169,7 +162,7 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
     """
     print('[ovl_token_minted] Starting query...')
     # 1 / 0
-    set_metrics_to_nan()
+    set_metrics_to_nan(subgraph_client)
     try:
         iteration = 0
 
@@ -212,7 +205,6 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
                 positions = [
                     position
                     for position in positions
-                    if position['market']['id'] in AVAILABLE_MARKETS
                 ]
                 print('[ovl_token_minted] new positions', len(positions))
                 timestamp_lower, timestamp_upper = query_single_time_window(
@@ -228,7 +220,7 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
                 handle_error(error_message)
                 print(error_message)
                 traceback.print_exc()
-                set_metrics_to_nan()
+                set_metrics_to_nan(subgraph_client)
                 should_initialize_metrics = True
             finally:
                 # Increment iteration
@@ -242,7 +234,7 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
         handle_error(error_message)
         print(error_message)
         traceback.print_exc()
-        set_metrics_to_nan()
+        set_metrics_to_nan(subgraph_client)
 
 subgraph_client = SubgraphClient()
 thread = CMThread(target=query_mint, args=(subgraph_client,))
