@@ -5,13 +5,15 @@ from pydantic import ValidationError
 from typing import List, Dict, Union
 
 from constants import SUBGRAPH_API_KEY
-from .models import Position, Build, Market
+from .models import Position, Build, Market, Unwind, Liquidate
 
 
 MODEL_MAP = {
     'positions': Position,
     'builds': Build,
     'markets': Market,
+    'unwinds': Unwind,
+    'liquidates': Liquidate,
 }
 
 
@@ -42,7 +44,7 @@ class ResourceClient:
         f'https://gateway-arbitrum.network.thegraph.com/api/'
         f'{SUBGRAPH_API_KEY}/subgraphs/id/7RuVCeRzAHL5apu6SWHyUEVt3Ko2pUv2wMTiHQJaiUW9'
     )
-    PAGE_SIZE = 500
+    PAGE_SIZE = 1000
 
     def __init__(self):
         avail_markets = self.get_available_markets()
@@ -257,6 +259,230 @@ class ResourceClient:
             if position['market']['id'] in self.AVAILABLE_MARKETS
         ]
         return filtered_positions
+
+    def get_all_unwinds(self):
+        query = '''{
+            unwinds(
+                first: 1000,
+                orderBy: timestamp,
+                orderDirection: desc
+            ) {
+                id
+                mint
+                timestamp
+                position {
+                    market {
+                        id
+                    }
+                }
+            }
+        }'''
+        all_unwinds = []
+        response: requests.Response = requests.post(
+            self.URL, json={'query': query}, timeout=10)
+        curr_unwinds = self.validate_response(response, 'unwinds')
+        page_count: int = 0
+        while True:
+            page_count += 1
+            print(f'Fetching unwinds page # {page_count}')
+            all_unwinds.extend(curr_unwinds)
+            query = '''{
+                unwinds(
+                    first: 1000,
+                    orderBy: timestamp,
+                    orderDirection: desc,
+                    where: { timestamp_lt:
+                ''' + curr_unwinds[-1]['timestamp'] + '}' + ''') {
+                    id
+                    mint
+                    timestamp
+                    position {
+                        market {
+                            id
+                        }
+                    }
+                }
+            }'''
+            response = requests.post(self.URL, json={'query': query}, timeout=10)
+            curr_unwinds = self.validate_response(response, 'unwinds')
+            if len(curr_unwinds) == 0:
+                break
+
+        filtered_unwinds = [
+            unwind
+            for unwind in all_unwinds
+            if unwind['position']['market']['id'] in self.AVAILABLE_MARKETS
+        ]
+        return filtered_unwinds
+
+
+    def get_unwinds(
+        self,
+        timestamp_lower: int,
+        timestamp_upper: int,
+    ):
+        all_unwinds = []
+        query = '''{
+            unwinds(
+                first: 1000,
+                orderBy: timestamp,
+                orderDirection: desc,
+                where: { timestamp_gt:
+            ''' + timestamp_lower + ',' + 'timestamp_lt: ' + timestamp_upper + '}' +''') {
+                id
+                mint
+                timestamp
+                position {
+                    market {
+                        id
+                    }
+                }
+            }
+        }'''
+        response = requests.post(
+            self.URL, json={'query': query}, timeout=10)
+        curr_unwinds = self.validate_response(response, 'unwinds')
+        page_count = 0
+        while len(curr_unwinds) > 0:
+            page_count += 1
+            print(f'Fetching unwinds page # {page_count}')
+            all_unwinds.extend(curr_unwinds)
+            query = '''{
+                unwinds(
+                    first: 1000,
+                    orderBy: timestamp,
+                    orderDirection: desc,
+                    where: { timestamp_gt:
+                ''' + timestamp_lower + ',' + 'timestamp_lt: ' + curr_unwinds[-1]['timestamp'] + '}' +''') {
+                    id
+                    mint
+                    timestamp
+                    position {
+                        market {
+                            id
+                        }
+                    }
+                }
+            }'''
+            response = requests.post(self.URL, json={'query': query}, timeout=10)
+            curr_unwinds = self.validate_response(response, 'unwinds')
+
+        filtered_unwinds = [
+            unwind
+            for unwind in all_unwinds
+            if unwind['position']['market']['id'] in self.AVAILABLE_MARKETS
+        ]
+        return filtered_unwinds
+
+    def get_liquidates(
+        self,
+        timestamp_lower: int,
+        timestamp_upper: int,
+    ):
+        all_liquidates = []
+        query = '''{
+            liquidates(
+                first: 1000,
+                orderBy: timestamp,
+                orderDirection: desc,
+                where: { timestamp_gt:
+            ''' + timestamp_lower + ',' + 'timestamp_lt: ' + timestamp_upper + '}' +''') {
+                id
+                mint
+                timestamp
+                position {
+                    market {
+                        id
+                    }
+                }
+            }
+        }'''
+        response = requests.post(
+            self.URL, json={'query': query}, timeout=10)
+        curr_liquidates = self.validate_response(response, 'liquidates')
+        page_count = 0
+        while len(curr_liquidates) > 0:
+            page_count += 1
+            print(f'Fetching liquidates page # {page_count}')
+            all_liquidates.extend(curr_liquidates)
+            query = '''{
+                liquidates(
+                    first: 1000,
+                    orderBy: timestamp,
+                    orderDirection: desc,
+                    where: { timestamp_gt:
+                ''' + timestamp_lower + ',' + 'timestamp_lt: ' + curr_liquidates[-1]['timestamp'] + '}' +''') {
+                    id
+                    mint
+                    timestamp
+                    position {
+                        market {
+                            id
+                        }
+                    }
+                }
+            }'''
+            response = requests.post(self.URL, json={'query': query}, timeout=10)
+            curr_liquidates = self.validate_response(response, 'liquidates')
+
+        filtered_liquidates = [
+            unwind
+            for unwind in all_liquidates
+            if unwind['position']['market']['id'] in self.AVAILABLE_MARKETS
+        ]
+        return filtered_liquidates
+
+
+    def get_all_liquidates(self):
+        query = '''{
+            liquidates {
+                id
+                mint
+                timestamp
+                position {
+                    market {
+                        id
+                    }
+                }
+            }
+        }'''
+        all_liquidates = []
+        response: requests.Response = requests.post(
+            self.URL, json={'query': query}, timeout=10)
+        curr_liquidates = self.validate_response(response, 'liquidates')
+        page_count: int = 0
+        while True:
+            page_count += 1
+            print(f'Fetching liquidates page # {page_count}')
+            all_liquidates.extend(curr_liquidates)
+            query = '''{
+                unwinds(
+                    first: 1000,
+                    orderBy: timestamp,
+                    orderDirection: desc,
+                    where: { timestamp_lt:
+                ''' + curr_liquidates[-1]['timestamp'] + '}' + ''') {
+                    id
+                    mint
+                    timestamp
+                    position {
+                        market {
+                            id
+                        }
+                    }
+                }
+            }'''
+            response = requests.post(self.URL, json={'query': query}, timeout=10)
+            curr_liquidates = self.validate_response(response, 'unwinds')
+            if len(curr_liquidates) == 0:
+                break
+
+        filtered_liquidates = [
+            liquidate
+            for liquidate in all_liquidates
+            if liquidate['position']['market']['id'] in self.AVAILABLE_MARKETS
+        ]
+        return filtered_liquidates
 
     def get_all_live_positions(
         self, page_size: int = PAGE_SIZE
