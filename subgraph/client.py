@@ -315,6 +315,15 @@ class ResourceClient:
         ]
         return filtered_unwinds
 
+    def get_all_unwinds_and_liquidates(self):
+        result = self.get_all_unwinds() + self.get_all_liquidates()
+        if not len(result):
+            return []
+        df = pd.DataFrame(result)
+        df['timestamp'] = pd.to_numeric(df['timestamp'])
+        df_sorted = df.sort_values(by='timestamp', ascending=False)
+        sorted_data = df_sorted.to_dict(orient='records')
+        return sorted_data
 
     def get_unwinds(
         self,
@@ -432,6 +441,15 @@ class ResourceClient:
         ]
         return filtered_liquidates
 
+    def get_unwinds_and_liquidates(self, timestamp_lower, timestamp_upper):
+        result = self.get_unwinds(timestamp_lower, timestamp_upper) + self.get_liquidates(timestamp_lower, timestamp_upper)
+        if not len(result):
+            return []
+        df = pd.DataFrame(result)
+        df['timestamp'] = pd.to_numeric(df['timestamp'])
+        df_sorted = df.sort_values(by='timestamp', ascending=False)
+        sorted_data = df_sorted.to_dict(orient='records')
+        return sorted_data
 
     def get_all_liquidates(self):
         query = '''{
