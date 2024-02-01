@@ -4,7 +4,7 @@ import requests
 from pydantic import ValidationError
 from typing import List, Dict, Union
 
-from constants import SUBGRAPH_API_KEY
+# from constants import SUBGRAPH_API_KEY
 from .models import Position, Build, Market, Unwind, Liquidate
 
 
@@ -40,10 +40,11 @@ class ResourceClient:
     # URL = 'https://api.studio.thegraph.com/proxy/49419/overlay-contracts/v0.0.8'
     # URL = 'https://api.studio.thegraph.com/query/46086/overlay-v2-subgraph-arbitrum/version/latest'
     # URL = 'https://api.studio.thegraph.com/query/50057/overlay-arbitrum/v1.0.1'
-    URL = (
-        f'https://gateway-arbitrum.network.thegraph.com/api/'
-        f'{SUBGRAPH_API_KEY}/subgraphs/id/7RuVCeRzAHL5apu6SWHyUEVt3Ko2pUv2wMTiHQJaiUW9'
-    )
+    # URL = (
+    #     f'https://gateway-arbitrum.network.thegraph.com/api/'
+    #     f'{SUBGRAPH_API_KEY}/subgraphs/id/7RuVCeRzAHL5apu6SWHyUEVt3Ko2pUv2wMTiHQJaiUW9'
+    # )
+    URL = 'https://api.thegraph.com/subgraphs/name/overlay-market/overlay-sepolia'
     PAGE_SIZE = 1000
 
     def __init__(self):
@@ -281,6 +282,8 @@ class ResourceClient:
         response: requests.Response = requests.post(
             self.URL, json={'query': query}, timeout=10)
         curr_unwinds = self.validate_response(response, 'unwinds')
+        if len(curr_unwinds) == 0:
+            return []
         page_count: int = 0
         while True:
             page_count += 1
@@ -468,6 +471,8 @@ class ResourceClient:
         response: requests.Response = requests.post(
             self.URL, json={'query': query}, timeout=10)
         curr_liquidates = self.validate_response(response, 'liquidates')
+        if len(curr_liquidates) == 0:
+            return []
         page_count: int = 0
         while True:
             page_count += 1
