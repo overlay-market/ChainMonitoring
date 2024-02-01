@@ -337,7 +337,7 @@ class ResourceClient:
                 orderBy: timestamp,
                 orderDirection: desc,
                 where: { timestamp_gt:
-            ''' + timestamp_lower + ',' + 'timestamp_lt: ' + timestamp_upper + '}' +''') {
+            ''' + str(timestamp_lower) + ',' + 'timestamp_lt: ' + str(timestamp_upper) + '}' +''') {
                 id
                 mint
                 timestamp
@@ -362,7 +362,7 @@ class ResourceClient:
                     orderBy: timestamp,
                     orderDirection: desc,
                     where: { timestamp_gt:
-                ''' + timestamp_lower + ',' + 'timestamp_lt: ' + curr_unwinds[-1]['timestamp'] + '}' +''') {
+                ''' + str(timestamp_lower) + ',' + 'timestamp_lt: ' + curr_unwinds[-1]['timestamp'] + '}' +''') {
                     id
                     mint
                     timestamp
@@ -395,7 +395,7 @@ class ResourceClient:
                 orderBy: timestamp,
                 orderDirection: desc,
                 where: { timestamp_gt:
-            ''' + timestamp_lower + ',' + 'timestamp_lt: ' + timestamp_upper + '}' +''') {
+            ''' + str(timestamp_lower) + ',' + 'timestamp_lt: ' + str(timestamp_upper) + '}' +''') {
                 id
                 mint
                 timestamp
@@ -420,7 +420,7 @@ class ResourceClient:
                     orderBy: timestamp,
                     orderDirection: desc,
                     where: { timestamp_gt:
-                ''' + timestamp_lower + ',' + 'timestamp_lt: ' + curr_liquidates[-1]['timestamp'] + '}' +''') {
+                ''' + str(timestamp_lower) + ',' + 'timestamp_lt: ' + curr_liquidates[-1]['timestamp'] + '}' +''') {
                     id
                     mint
                     timestamp
