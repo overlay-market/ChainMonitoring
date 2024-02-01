@@ -37,7 +37,7 @@ def set_metrics_to_nan(subgraph_client):
         metrics['mint_gauge'].labels(market=MAP_MARKET_ID_TO_NAME[market]).set(math.nan)
 
 
-def initialize_metrics(all_positions):
+def initialize_metrics(unwinds_and_liquidates):
     """
     Initialize metrics based on the provided positions.
 
@@ -64,14 +64,17 @@ def initialize_metrics(all_positions):
         4. Calculate total mint and mint per market.
         5. Update the metrics collector with the calculated values.
     """
-    if (not len(all_positions)):
+    if (not len(unwinds_and_liquidates)):
         return
-    all_positions_df = pd.DataFrame(all_positions)
-    all_positions_df['mint'] = all_positions_df['mint'].apply(int)
-    all_positions_df[['market', 'position_id']] = all_positions_df['id'].str.split(
+
+    print('unwinds_and_liquidates!!', unwinds_and_liquidates[:10])
+    unwinds_and_liquidates_df = pd.DataFrame(unwinds_and_liquidates)
+    print('unwinds_and_liquidates_df!!', unwinds_and_liquidates_df)
+    unwinds_and_liquidates_df['mint'] = unwinds_and_liquidates_df['mint'].apply(int)
+    unwinds_and_liquidates_df[['market', 'position_id', 'num']] = unwinds_and_liquidates_df['id'].str.split(
         '-', expand=True)
-    mint_total = all_positions_df['mint'].sum() / MINT_DIVISOR
-    mint_total_per_market_df = all_positions_df.groupby(by='market')['mint'].sum().reset_index()
+    mint_total = unwinds_and_liquidates_df['mint'].sum() / MINT_DIVISOR
+    mint_total_per_market_df = unwinds_and_liquidates_df.groupby(by='market')['mint'].sum().reset_index()
     mint_total_per_market = dict(
         zip(mint_total_per_market_df['market'], mint_total_per_market_df['mint']))
 
@@ -87,7 +90,7 @@ def is_divisible(number, divisor):
 
 
 def query_single_time_window(
-        positions,
+        unwinds_and_liquidates,
         timestamp_lower
     ):
     """
@@ -114,15 +117,15 @@ def query_single_time_window(
         - `ALL_MARKET_LABEL` is a global variable.
 
     """
-    for position in positions:
-        mint = int(position['mint']) / MINT_DIVISOR
-        market = MAP_MARKET_ID_TO_NAME[position['market']['id']]
+    # unwinds_and_liquidates = unwinds + liquidates
+    for txn in unwinds_and_liquidates:
+        mint = int(txn['mint']) / MINT_DIVISOR
+        market = MAP_MARKET_ID_TO_NAME[txn['position']['market']['id']]
         metrics['mint_gauge'].labels(market=market).inc(mint)
         metrics['mint_gauge'].labels(market=ALL_MARKET_LABEL).inc(mint)
 
-    if positions:
-        # set next timestamp lower to timestamp of latest position
-        next_timestamp_lower = int(positions[0]['createdAtTimestamp'])
+    if unwinds_and_liquidates:
+        next_timestamp_lower = int(unwinds_and_liquidates[0]['timestamp'])
     else:
         # If there are no new positions in the time window,
         # Keep the current timestamp lower
@@ -167,11 +170,12 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
         iteration = 0
 
         # Calculate the total mint so far from the subgraph
-        all_positions = subgraph_client.get_all_positions()
-        initialize_metrics(all_positions)
+        # all_positions = subgraph_client.get_all_positions()
+        all_unwinds_and_liquidates = subgraph_client.get_all_unwinds_and_liquidates()
+        initialize_metrics(all_unwinds_and_liquidates)
         time.sleep(QUERY_INTERVAL)
 
-        timestamp_lower = int(all_positions[0]['createdAtTimestamp'])
+        timestamp_lower = int(all_unwinds_and_liquidates[0]['timestamp'])
         timestamp_upper = math.ceil(datetime.datetime.now().timestamp())
 
         should_initialize_metrics = False
@@ -181,16 +185,18 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
                 print('===================================')
                 print(f'[ovl_token_minted] Running iteration #{iteration}...')
                 print(
-                    '[ovl_token_minted] timestamp_lower',
+                    f'[ovl_token_minted] timestamp_lower {timestamp_lower}',
                     format_datetime(timestamp_lower)
                 )
                 print(
-                    '[ovl_token_minted] timestamp_upper',
+                    f'[ovl_token_minted] timestamp_upper {timestamp_upper}',
                     format_datetime(timestamp_upper)
                 )
                 if should_initialize_metrics:
-                    all_positions = subgraph_client.get_all_positions()
-                    initialize_metrics(all_positions)
+                    # all_positions = subgraph_client.get_all_positions()
+                    # initialize_metrics(all_positions)
+                    all_unwinds_and_liquidates = subgraph_client.get_all_unwinds_and_liquidates()
+                    initialize_metrics(all_unwinds_and_liquidates)
                     should_initialize_metrics = False
 
                 # Test market that overmints every 200th iteration
@@ -200,15 +206,13 @@ def query_mint(subgraph_client, stop_at_iteration=math.inf):
                 #     metrics['mint_gauge'].labels(market='TEST OVERMINT').inc(0.02)
 
                 # Update ovl_token_minted metric
-                positions = subgraph_client.get_positions(
-                    timestamp_lower, timestamp_upper)
-                positions = [
-                    position
-                    for position in positions
-                ]
-                print('[ovl_token_minted] new positions', len(positions))
+                # unwinds = subgraph_client.get_unwinds(timestamp_lower, timestamp_upper)
+                # liquidates = subgraph_client.get_liquidates(timestamp_lower, timestamp_upper)
+                unwinds_and_liquidates = subgraph_client.get_unwinds_and_liquidates(timestamp_lower, timestamp_upper)
+                print('[ovl_token_minted] new unwinds and liquidates', len(unwinds_and_liquidates))
+                # print('[ovl_token_minted] new unwinds and liquidates', len(unwinds + liquidates))
                 timestamp_lower, timestamp_upper = query_single_time_window(
-                    positions, timestamp_lower)
+                    unwinds_and_liquidates, timestamp_lower)
                 # if iteration == 1:
                 #     1 / 0
             except Exception as e:
